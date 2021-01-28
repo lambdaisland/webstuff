@@ -69,3 +69,15 @@
   fragments with :<>, and extensible via the HiccupTag protocol."
   [& nodes-specs]
   (enlive/flatmap nodify nodes-specs))
+
+;;https://www.w3.org/TR/html5/syntax.html#void-elements
+(def html5-void-elements
+  #{:area :base :br :col :embed :hr :img :input :keygen :link :meta :param
+    :source :track :wbr})
+
+(defn render-html [h]
+  (with-redefs [enlive/self-closing-tags html5-void-elements]
+    (apply str "<!DOCTYPE html>\n" (enlive/emit* h))))
+
+(defn render [h]
+  (render-html (html h)))

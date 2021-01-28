@@ -5,7 +5,7 @@
             [garden.color :as gcolor]
             [garden.types :as gt]
             [garden.stylesheet :as gs]
-            [lambdaisland.hiccup :as hiccup]))
+            #?(:clj [lambdaisland.hiccup :as hiccup])))
 
 (defprotocol Style
   (classname [_])
@@ -13,8 +13,9 @@
   (css [_])
   (rules [_]))
 
-(defmethod print-method ::styled [x writer]
-  (.write writer (classname x)))
+#?(:clj
+   (defmethod print-method ::styled [x writer]
+     (.write writer (classname x))))
 
 (def munge-map
   {\@ "_CIRCA_"
@@ -42,18 +43,21 @@
    \? "_QMARK_"})
 
 (defn munge-str [s]
-  (let [sb (StringBuilder.)]
-    (doseq [ch s]
-      (if-let [repl (get munge-map ch)]
-        (.append sb repl)
-        (.append sb ch)))
-    (str sb)))
+  #?(:clj
+     (let [sb (StringBuilder.)]
+       (doseq [ch s]
+         (if-let [repl (get munge-map ch)]
+           (.append sb repl)
+           (.append sb ch)))
+       (str sb))
+     :cljs
+     (apply str (map #(get munge-map % %) s))))
 
 (defn classname-for [varsym]
-  (let [prefix (or (:ornament/prefix (meta (the-ns (symbol (namespace varsym)))))
+  (let [prefix (or #_(:ornament/prefix (meta (the-ns (symbol (namespace varsym)))))
                    (-> varsym
                        namespace
-                       (str/replace #"lambdaisland\." "")
+                       #_  (str/replace #"lambdaisland\." "")
                        (str/replace #"\." "_")))]
     (str prefix "__" (munge-str (name varsym)))))
 
@@ -136,58 +140,67 @@
   ([varsym rules]
    (styled varsym :div rules))
   ([varsym tag rules]
-   (let [classname (classname-for varsym)]
-     ^{:type ::styled}
-     (reify
-       Style
-       (classname [_] classname)
-       (as-garden [_] (into [(str "." classname)] (process-rules rules)))
-       (css [this] (gc/compile-css
-                    {:pretty-print? false}
-                    (as-garden this)))
-       (rules [_] rules)
+   #?(:clj
+      (let [classname (classname-for varsym)]
+        ^{:type ::styled}
+        (reify
+          Style
+          (classname [_] classname)
+          (as-garden [_] (into [(str "." classname)] (process-rules rules)))
+          (css [this] (gc/compile-css
+                       {:pretty-print? false}
+                       (as-garden this)))
+          (rules [_] rules)
 
-       clojure.lang.IFn
-       (invoke [_] classname)
-       (invoke [this a] (str this " " a))
-       (invoke [this a b] (str this " " a " " b))
-       (invoke [this a b c] (str this " " a " " b " " c))
-       (invoke [this a b c d] (str this " " a " " b " " c " " d))
-       (invoke [this a b c d e] (str this " " a " " b " " c " " d " " e))
-       (invoke [this a b c d e f] (str this " " a " " b " " c " " d " " e " " f))
-       (invoke [this a b c d e f g] (str this " " a " " b " " c " " d " " e " " f " " g))
-       (invoke [this a b c d e f g h] (str this " " a " " b " " c " " d " " e " " f " " g " " h))
-       (invoke [this a b c d e f g h i] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i))
-       (invoke [this a b c d e f g h i j] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j))
-       (invoke [this a b c d e f g h i j k] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k))
-       (invoke [this a b c d e f g h i j k l] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l))
-       (invoke [this a b c d e f g h i j k l m] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m))
-       (invoke [this a b c d e f g h i j k l m n] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n))
-       (invoke [this a b c d e f g h i j k l m n o] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o))
-       (invoke [this a b c d e f g h i j k l m n o p] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p))
-       (invoke [this a b c d e f g h i j k l m n o p q] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p " " q))
-       (invoke [this a b c d e f g h i j k l m n o p q r] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p " " q " " r))
-       (invoke [this a b c d e f g h i j k l m n o p q r s] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p " " q " " r " " s))
+          clojure.lang.IFn
+          (invoke [_] classname)
+          (invoke [this a] (str this " " a))
+          (invoke [this a b] (str this " " a " " b))
+          (invoke [this a b c] (str this " " a " " b " " c))
+          (invoke [this a b c d] (str this " " a " " b " " c " " d))
+          (invoke [this a b c d e] (str this " " a " " b " " c " " d " " e))
+          (invoke [this a b c d e f] (str this " " a " " b " " c " " d " " e " " f))
+          (invoke [this a b c d e f g] (str this " " a " " b " " c " " d " " e " " f " " g))
+          (invoke [this a b c d e f g h] (str this " " a " " b " " c " " d " " e " " f " " g " " h))
+          (invoke [this a b c d e f g h i] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i))
+          (invoke [this a b c d e f g h i j] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j))
+          (invoke [this a b c d e f g h i j k] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k))
+          (invoke [this a b c d e f g h i j k l] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l))
+          (invoke [this a b c d e f g h i j k l m] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m))
+          (invoke [this a b c d e f g h i j k l m n] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n))
+          (invoke [this a b c d e f g h i j k l m n o] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o))
+          (invoke [this a b c d e f g h i j k l m n o p] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p))
+          (invoke [this a b c d e f g h i j k l m n o p q] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p " " q))
+          (invoke [this a b c d e f g h i j k l m n o p q r] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p " " q " " r))
+          (invoke [this a b c d e f g h i j k l m n o p q r s] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p " " q " " r " " s))
 
-       Object
-       (toString [_] classname)
+          Object
+          (toString [_] classname)
 
-       gc/IExpandable
-       (expand [this]
-         (mapcat
-          (fn [rule]
-            (gc/expand
-             (if (map? rule)
-               [:& rule]
-               rule)))
-          rules))
+          gc/IExpandable
+          (expand [this]
+            (mapcat
+             (fn [rule]
+               (gc/expand
+                (if (map? rule)
+                  [:& rule]
+                  rule)))
+             rules))
 
-       hiccup/HiccupTag
-       (-expand [_ attrs children]
-         (into [tag (update attrs :class #(conj (if (coll? %)
-                                                  %
-                                                  [(str %)])
-                                                classname))] children))))))
+          hiccup/HiccupTag
+          (-expand [_ attrs children]
+            (into [tag (update attrs :class #(conj (if (coll? %)
+                                                     %
+                                                     [(str %)])
+                                                   classname))] children))))
+      :cljs
+      (let [classname (classname-for varsym)]
+        (fn [?props & children]
+          (let [[props children] (if (map? ?props)
+                                   [?props children]
+                                   [nil (cons ?props children)])
+                props (update props :class #(if % (str % " " classname) classname))]
+            (into [tag props] children)))))))
 
 (defmacro defstyled [sym el & styles]
   (let [varsym (symbol (name (ns-name *ns*)) (name sym))]
@@ -197,14 +210,15 @@
 (defmacro defcss [sym & styles]
   `(defstyled ~sym :div ~@styles))
 
-(defn defined-styles []
-  (str/join "\n"
-            (sequence
-             (comp (mapcat ns-publics)
-                   (map val)
-                   (filter (comp ::css meta))
-                   (map (comp css deref)))
-             (all-ns))))
+#?(:clj
+   (defn defined-styles []
+     (str/join "\n"
+               (sequence
+                (comp (mapcat ns-publics)
+                      (map val)
+                      (filter (comp ::css meta))
+                      (map (comp css deref)))
+                (all-ns)))))
 
 (comment
 
