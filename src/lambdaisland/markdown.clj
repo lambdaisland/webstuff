@@ -49,20 +49,22 @@
                            build)]
     (.parse parser s)))
 
-(.get (.get AttributesExtension/NODE_ATTRIBUTES nil) nnn)
+(comment
+  (.get (.get AttributesExtension/NODE_ATTRIBUTES nil) nnn))
 
 (defprotocol Convert
   (data [node])
   #_(html [node]))
 
-(data (parse-ast "{foo=blue} **hello** {.red.blue}
+(comment
+  (data (parse-ast "{foo=blue} **hello** {.red.blue}
 
 
 * foo
 * bar
 {hello=world}"))
 
-(bean (first (.getChildren nnn)))
+  (bean (first (.getChildren nnn))))
 
 (extend-protocol Convert
   Node
@@ -105,35 +107,35 @@
 
 
 
-AutoLink
-BlockQuote
-BulletList
-Code
-CodeBlock
-Emphasis
-FencedCodeBlock
-HardLineBreak
-Heading
-HtmlBlock
-HtmlCommentBlock
-HtmlInnerBlock
-HtmlInnerBlockComment
-HtmlEntity
-HtmlInline
-HtmlInlineComment
-Image
-ImageRef
-IndentedCodeBlock
-Link
-LinkRef
-BulletListItem
-OrderedListItem
-MailLink
-OrderedList
-Paragraph
-Reference
-SoftLineBreak
-StrongEmphasis
-Text
-TextBase
-ThematicBreak
+;; AutoLink
+;; BlockQuote
+;; BulletList
+;; Code
+;; CodeBlock
+;; Emphasis
+;; FencedCodeBlock
+;; HardLineBreak
+;; Heading
+;; HtmlBlock
+;; HtmlCommentBlock
+;; HtmlInnerBlock
+;; HtmlInnerBlockComment
+;; HtmlEntity
+;; HtmlInline
+;; HtmlInlineComment
+;; Image
+;; ImageRef
+;; IndentedCodeBlock
+;; Link
+;; LinkRef
+;; BulletListItem
+;; OrderedListItem
+;; MailLink
+;; OrderedList
+;; Paragraph
+;; Reference
+;; SoftLineBreak
+;; StrongEmphasis
+;; Text
+;; TextBase
+;; ThematicBreak
