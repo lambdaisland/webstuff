@@ -5,7 +5,9 @@
             [garden.color :as gcolor]
             [garden.types :as gt]
             [garden.stylesheet :as gs]
-            #?(:clj [lambdaisland.hiccup :as hiccup])))
+            #?(:clj [lambdaisland.hiccup :as hiccup]))
+  #?(:cljs
+     (:require-macros [lambdaisland.ornament :refer [defstyled]])))
 
 (defprotocol Style
   (classname [_])
@@ -195,20 +197,25 @@
                                                    classname))] children))))
       :cljs
       (let [classname (classname-for varsym)]
-        (fn [?props & children]
-          (let [[props children] (if (map? ?props)
-                                   [?props children]
-                                   [nil (cons ?props children)])
-                props (update props :class #(if % (str % " " classname) classname))]
-            (into [tag props] children)))))))
+        (specify!
+            (fn [?props & children]
+              (let [[props children] (if (map? ?props)
+                                       [?props children]
+                                       [nil (cons ?props children)])
+                    props (update props :class #(if % (str % " " classname) classname))]
+                (into [tag props] children)))
+          Object
+          (toString [] classname) )))))
 
-(defmacro defstyled [sym el & styles]
-  (let [varsym (symbol (name (ns-name *ns*)) (name sym))]
-    `(def ~(with-meta sym {::css true})
-       (styled '~varsym '~el (list ~@styles)))))
+#?(:clj
+   (defmacro defstyled [sym el & styles]
+     (let [varsym (symbol (name (ns-name *ns*)) (name sym))]
+       `(def ~(with-meta sym {::css true})
+          (styled '~varsym '~el (list ~@styles))))))
 
-(defmacro defcss [sym & styles]
-  `(defstyled ~sym :div ~@styles))
+#?(:clj
+   (defmacro defcss [sym & styles]
+     `(defstyled ~sym :div ~@styles)))
 
 #?(:clj
    (defn defined-styles []
