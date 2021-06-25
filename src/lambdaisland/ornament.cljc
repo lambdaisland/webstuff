@@ -29,7 +29,8 @@
        (classname [_])
        (as-garden [_])
        (css [_])
-       (rules [_]))
+       (rules [_])
+       (tag [_]))
 
      (defmethod print-method ::styled [x writer]
        (.write writer (classname x)))
@@ -154,7 +155,13 @@
          rule))
 
      (defn process-rules [rules]
-       (map process-rule rules))))
+       (seq (reduce (fn [acc rule]
+                      (let [r (process-rule rule)]
+                        (if (and (map? r) (map? (last acc)))
+                          (conj (vec (butlast acc))
+                                (merge (last acc) r))
+                          (conj acc r))))
+                    [] rules)))))
 
 (defn add-class [classes class]
   (cond
@@ -178,6 +185,7 @@
 (defn styled
   ([varsym classname tag rules component]
    #?(:clj
+      ^{:type ::styled}
       (reify
         Style
         (classname [_] classname)
@@ -186,6 +194,7 @@
                      {:pretty-print? false}
                      (as-garden this)))
         (rules [_] rules)
+        (tag [_] tag)
 
         clojure.lang.IFn
         (invoke [this] (-expand this {} nil))
@@ -282,7 +291,7 @@
         (-expand [_ attrs children]
           (expand-hiccup-tag tag classname attrs children component)))
       :cljs
-      (let [render-fn (fn [?attrs & children]
+      (let [render-fn (fn ^{:type ::styled} [?attrs & children]
                         (expand-hiccup-tag tag
                                            classname
                                            (if (map? ?attrs) ?attrs {})
@@ -300,13 +309,22 @@
 
 
 #?(:clj
-   (defmacro defstyled [sym tag & styles]
+   (defmacro defstyled [sym tagname & styles]
      (let [varsym (symbol (name (ns-name *ns*)) (name sym))
-           [styles fn-tails] (split-with (complement list?) styles)]
+           [styles fn-tails] (split-with (complement list?) styles)
+           tagname (eval tagname)
+           inherit? (satisfies? Style tagname)
+           tag (if inherit?
+                 (tag tagname)
+                 tagname)
+           styles (into (if inherit?
+                          (rules tagname)
+                          [])
+                        styles)]
        `(def ~(with-meta sym {::css true})
           (styled '~varsym
                   ~(classname-for varsym)
-                  '~tag
+                  ~tag
                   ~(into [] styles)
                   ~(when (seq fn-tails)
                      `(fn ~@fn-tails)))))))
