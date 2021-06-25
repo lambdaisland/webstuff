@@ -6,11 +6,8 @@
   namespace."
   (:require [net.cgrand.enlive-html :as enlive]
             [garden.compiler :as gc]
-            [clojure.string :as str]))
-
-(defprotocol HiccupTag
-  (-expand [_ attr-map children]
-    "Expand this tag, gets attr map and seq of children, should return valid Hiccup"))
+            [clojure.string :as str]
+            [lambdaisland.hiccup.protocols :refer [HiccupTag -expand]]))
 
 (defn- attr-map? [node-spec]
   (and (map? node-spec) (not (keyword? (:tag node-spec)))))
@@ -75,9 +72,15 @@
   #{:area :base :br :col :embed :hr :img :input :keygen :link :meta :param
     :source :track :wbr})
 
-(defn render-html [h]
+(defn render-html* [h]
   (with-redefs [enlive/self-closing-tags html5-void-elements]
-    (apply str "<!DOCTYPE html>\n" (enlive/emit* h))))
+    (apply str (enlive/emit* h))))
 
-(defn render [h]
-  (render-html (html h)))
+(defn render-html [h]
+  (str "<!DOCTYPE html>\n" (render-html* h)))
+
+(defn render
+  ([h])
+  ([h {:keys [doctype?]
+       :or {doctype? true}}]
+   ((if doctype? render-html render-html*) (html h))))

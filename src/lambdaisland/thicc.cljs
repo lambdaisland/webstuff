@@ -12,7 +12,13 @@
   (:require [goog.dom :as gdom]
             [clojure.string :as str]
             [camel-snake-kebab.core :as csk]
-            [lambdaisland.dom-types :as dom-types]))
+            [lambdaisland.dom-types :as dom-types]
+            [lambdaisland.hiccup.protocols :refer [HiccupTag -expand]]))
+
+(extend-type js/Node
+  ITransientCollection
+  (-conj! [^js this child]
+    (.appendChild this child)))
 
 (def ^:dynamic *namespaces*
   "Mapping from keyword prefixes to xml namespaces, can be used for tag or
@@ -42,12 +48,23 @@
 
 (defn set-attr [el k v]
   (let [n (csk/->camelCase (name k))]
-    (if (qualified-keyword? k)
+    (cond
+      (qualified-keyword? k)
       (.setAttributeNS el (get *namespaces* (namespace k)) n v)
-      (if (= "on-" (subs (name k) 0 3))
-        ;; Set event handlers directly, rather than through setAttribute
-        (unchecked-set el (str/lower-case n) v)
-        (.setAttribute el n v)))))
+
+      (= "on-" (subs (name k) 0 3))
+      ;; Set event handlers directly, rather than through setAttribute
+      (unchecked-set el (str/lower-case n) v)
+
+      (and (= :class k) (sequential? v))
+      (.setAttribute el "class" (str/join " " v))
+
+      (and (= :style k) (map? v))
+      (doseq [[prop val] v]
+        (.setProperty (.-style el) (name prop) val))
+
+      :else
+      (.setAttribute el n v))))
 
 (defn set-attrs [el attrs]
   (doseq [[k v] attrs]
@@ -119,6 +136,12 @@
     (cond
       (= :<> (first hiccup))
       (dom (rest hiccup))
+
+      (implements? HiccupTag (first hiccup))
+      (let [[tag ?attr-map & children] hiccup]
+        (dom (-expand tag
+                      (if (map? ?attr-map) ?attr-map {})
+                      (if (map? ?attr-map) children (cons ?attr-map children)))))
 
       (fn? (first hiccup))
       (apply (first hiccup) (rest hiccup))
