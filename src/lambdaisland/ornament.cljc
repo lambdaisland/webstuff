@@ -1,221 +1,315 @@
 (ns lambdaisland.ornament
+  "CSS-in-clj(s)"
   (:require [clojure.string :as str]
-            [garden.compiler :as gc]
-            [garden.core :as garden]
-            [garden.color :as gcolor]
-            [garden.types :as gt]
-            [garden.stylesheet :as gs]
-            #?(:clj [lambdaisland.hiccup :as hiccup]))
+            #?@(:clj [[garden.compiler :as gc]
+                      [garden.core :as garden]
+                      [garden.color :as gcolor]
+                      [garden.types :as gt]
+                      [garden.stylesheet :as gs]
+                      [girouette.tw.core :as girouette]
+                      [girouette.tw.typography :as girouette-typography]
+                      [girouette.tw.color :as girouette-color]
+                      [girouette.tw.default-api :as girouette-default]])
+            [lambdaisland.hiccup.protocols :refer [HiccupTag -expand]])
   #?(:cljs
      (:require-macros [lambdaisland.ornament :refer [defstyled]])))
 
-(defprotocol Style
-  (classname [_])
-  (as-garden [_])
-  (css [_])
-  (rules [_]))
-
 #?(:clj
-   (defmethod print-method ::styled [x writer]
-     (.write writer (classname x))))
+   (do
+     (def girouette-api
+       (atom (girouette/make-api
+              girouette-default/default-components
+              {:color-map girouette-color/default-color-map
+               :font-family-map girouette-typography/default-font-family-map})))
 
-(def munge-map
-  {\@ "_CIRCA_"
-   \! "_BANG_"
-   \# "_SHARP_"
-   \% "_PERCENT_"
-   \& "_AMPERSAND_"
-   \' "_SINGLEQUOTE_"
-   \* "_STAR_"
-   \+ "_PLUS_"
-   \- "_"
-   \/ "_SLASH_"
-   \: "_COLON_"
-   \[ "_LBRACK_"
-   \{ "_LBRACE_"
-   \< "_LT_"
-   \\ "_BSLASH_"
-   \| "_BAR_"
-   \= "_EQ_"
-   \] "_RBRACK_"
-   \} "_RBRACE_"
-   \> "_GT_"
-   \^ "_CARET_"
-   \~ "_TILDE_"
-   \? "_QMARK_"})
+     (defn class-name->garden [n]
+       ((:class-name->garden @girouette-api) n))
 
-(defn munge-str [s]
-  #?(:clj
-     (let [sb (StringBuilder.)]
-       (doseq [ch s]
-         (if-let [repl (get munge-map ch)]
-           (.append sb repl)
-           (.append sb ch)))
-       (str sb))
-     :cljs
-     (apply str (map #(get munge-map % %) s))))
+     (defprotocol Style
+       (classname [_])
+       (as-garden [_])
+       (css [_])
+       (rules [_]))
 
-(defn classname-for [varsym]
-  (let [prefix (or #_(:ornament/prefix (meta (the-ns (symbol (namespace varsym)))))
-                   (-> varsym
-                       namespace
-                       #_  (str/replace #"lambdaisland\." "")
-                       (str/replace #"\." "_")))]
-    (str prefix "__" (munge-str (name varsym)))))
+     (defmethod print-method ::styled [x writer]
+       (.write writer (classname x)))
 
-(defn join-vector-by [sep val]
-  (if (vector? val)
-    (str/join sep val)
-    val))
+     (def munge-map
+       {\@ "_CIRCA_"
+        \! "_BANG_"
+        \# "_SHARP_"
+        \% "_PERCENT_"
+        \& "_AMPERSAND_"
+        \' "_SINGLEQUOTE_"
+        \* "_STAR_"
+        \+ "_PLUS_"
+        \- "_"
+        \/ "_SLASH_"
+        \: "_COLON_"
+        \[ "_LBRACK_"
+        \{ "_LBRACE_"
+        \< "_LT_"
+        \\ "_BSLASH_"
+        \| "_BAR_"
+        \= "_EQ_"
+        \] "_RBRACK_"
+        \} "_RBRACE_"
+        \> "_GT_"
+        \^ "_CARET_"
+        \~ "_TILDE_"
+        \? "_QMARK_"})
 
-(declare process-rule)
+     (defn munge-str [s]
+       #?(:clj
+          (let [sb (StringBuilder.)]
+            (doseq [ch s]
+              (if-let [repl (get munge-map ch)]
+                (.append sb repl)
+                (.append sb ch)))
+            (str sb))
+          :cljs
+          (apply str (map #(get munge-map % %) s))))
 
-(defmulti process-tag (fn [[tag & _]] tag))
+     (defn classname-for [varsym]
+       (let [prefix (or (:ornament/prefix (meta (the-ns (symbol (namespace varsym)))))
+                        (-> varsym
+                            namespace
+                            #_  (str/replace #"lambdaisland\." "")
+                            (str/replace #"\." "_")))]
+         (str prefix "__" (munge-str (name varsym)))))
 
-(defmethod process-tag :default [v]
-  (mapv process-rule v))
+     (defn join-vector-by [sep val]
+       (if (vector? val)
+         (str/join sep val)
+         val))
 
-(defmethod process-tag :at-media [[_ media-queries & rules]]
-  (gs/at-media media-queries (into [:&] (map process-rule) rules)))
+     (declare process-rule)
 
-(defmethod process-tag :cssfn [[_ fn-name & args]]
-  (gt/->CSSFunction fn-name args))
+     (defmulti process-tag (fn [[tag & _]] tag))
 
-(defmethod process-tag :at-font-face [[_ & props]]
-  ["@font-face" props])
+     (defmethod process-tag :default [v]
+       (into [(first v)] (map process-rule (next v))))
 
-(defmethod process-tag :at-import [[_ url & media-queries]]
-  (gt/->CSSAtRule :import {:url url :media-queries media-queries}))
+     (defmethod process-tag :at-media [[_ media-queries & rules]]
+       (gs/at-media media-queries (into [:&] (map process-rule) rules)))
 
-(defmethod process-tag :at-supports [[_ feature-queries & rules]]
-  (gt/->CSSAtRule :feature {:feature-queries feature-queries
-                            :rules (into [:&] rules)}))
+     (defmethod process-tag :cssfn [[_ fn-name & args]]
+       (gt/->CSSFunction fn-name args))
 
-(defmethod process-tag :at-keyframes [[_ identifier & frames]]
-  (gt/->CSSAtRule :keyframes {:identifier identifier
-                              :frames frames}))
+     (defmethod process-tag :at-font-face [[_ & props]]
+       ["@font-face" props])
 
-(defmethod process-tag :rgb [[_ r g b]]
-  (gcolor/rgb [r g b]))
+     (defmethod process-tag :at-import [[_ url & media-queries]]
+       (gt/->CSSAtRule :import {:url url :media-queries media-queries}))
 
-(defmethod process-tag :hsl [[_ h s l]]
-  (gcolor/hsl [h s l]))
+     (defmethod process-tag :at-supports [[_ feature-queries & rules]]
+       (gt/->CSSAtRule :feature {:feature-queries feature-queries
+                                 :rules (into [:&] rules)}))
 
-(defmulti process-property (fn [prop val] prop))
+     (defmethod process-tag :at-keyframes [[_ identifier & frames]]
+       (gt/->CSSAtRule :keyframes {:identifier identifier
+                                   :frames frames}))
 
-(defmethod process-property :default [_ val]
-  (if (vector? val)
-    (process-tag val)
-    val))
+     (defmethod process-tag :rgb [[_ r g b]]
+       (gcolor/rgb [r g b]))
 
-(defmethod process-property :grid-template-areas [_ val]
-  (if (vector? val)
-    (str/join " "
-              (map (fn [row]
-                     (pr-str (str/join " " (map name row))))
-                   val))
-    val))
+     (defmethod process-tag :hsl [[_ h s l]]
+       (gcolor/hsl [h s l]))
 
-(defmethod process-property :grid-area [_ val] (join-vector-by " / " val))
-(defmethod process-property :border [_ val] (join-vector-by " " val))
-(defmethod process-property :margin [_ val] (join-vector-by " " val))
-(defmethod process-property :padding [_ val] (join-vector-by " " val))
+     (defmulti process-property (fn [prop val] prop))
 
-(defn process-rule [rule]
+     (defmethod process-property :default [_ val]
+       (if (vector? val)
+         (process-tag val)
+         val))
+
+     (defmethod process-property :grid-template-areas [_ val]
+       (if (vector? val)
+         (str/join " "
+                   (map (fn [row]
+                          (pr-str (str/join " " (map name row))))
+                        val))
+         val))
+
+     (defmethod process-property :grid-area [_ val] (join-vector-by " / " val))
+     (defmethod process-property :border [_ val] (join-vector-by " " val))
+     (defmethod process-property :margin [_ val] (join-vector-by " " val))
+     (defmethod process-property :padding [_ val] (join-vector-by " " val))
+
+     (defn process-rule [rule]
+       (cond
+         (record? rule) ; Prevent some defrecords in garden.types to be fudged
+         rule
+
+         (simple-keyword? rule)
+         (second (class-name->garden (name rule)))
+
+         (map? rule)
+         (into {} (map (fn [[k v]] [k (process-property k v)])) rule)
+
+         (vector? rule)
+         (process-tag rule)
+
+         :else
+         rule))
+
+     (defn process-rules [rules]
+       (map process-rule rules))))
+
+(defn add-class [classes class]
   (cond
-    (record? rule) ; Prevent some defrecords in garden.types to be fudged
-    rule
-
-    (map? rule)
-    (into {} (map (fn [[k v]] [k (process-property k v)])) rule)
-
-    (vector? rule)
-    (process-tag rule)
-
+    (string? classes)
+    [classes class]
+    (seq classes)
+    (conj classes class)
     :else
-    rule))
+    [class]))
 
-(defn process-rules [rules]
-  (map process-rule rules))
+(defn expand-hiccup-tag [tag classname attrs children component]
+  (if component
+    (let [child (apply component (dissoc attrs :id :class :style) children)]
+      (expand-hiccup-tag tag classname
+                         (into (meta child)
+                               (select-keys attrs [:id :class :style]))
+                         [child]
+                         nil))
+    (into [tag (update attrs :class add-class classname)] children)))
 
 (defn styled
-  ([varsym rules]
-   (styled varsym :div rules))
-  ([varsym tag rules]
+  ([varsym classname tag rules component]
    #?(:clj
-      (let [classname (classname-for varsym)]
-        ^{:type ::styled}
-        (reify
-          Style
-          (classname [_] classname)
-          (as-garden [_] (into [(str "." classname)] (process-rules rules)))
-          (css [this] (gc/compile-css
-                       {:pretty-print? false}
-                       (as-garden this)))
-          (rules [_] rules)
+      (reify
+        Style
+        (classname [_] classname)
+        (as-garden [_] (into [(str "." classname)] (process-rules rules)))
+        (css [this] (gc/compile-css
+                     {:pretty-print? false}
+                     (as-garden this)))
+        (rules [_] rules)
 
-          clojure.lang.IFn
-          (invoke [_] classname)
-          (invoke [this a] (str this " " a))
-          (invoke [this a b] (str this " " a " " b))
-          (invoke [this a b c] (str this " " a " " b " " c))
-          (invoke [this a b c d] (str this " " a " " b " " c " " d))
-          (invoke [this a b c d e] (str this " " a " " b " " c " " d " " e))
-          (invoke [this a b c d e f] (str this " " a " " b " " c " " d " " e " " f))
-          (invoke [this a b c d e f g] (str this " " a " " b " " c " " d " " e " " f " " g))
-          (invoke [this a b c d e f g h] (str this " " a " " b " " c " " d " " e " " f " " g " " h))
-          (invoke [this a b c d e f g h i] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i))
-          (invoke [this a b c d e f g h i j] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j))
-          (invoke [this a b c d e f g h i j k] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k))
-          (invoke [this a b c d e f g h i j k l] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l))
-          (invoke [this a b c d e f g h i j k l m] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m))
-          (invoke [this a b c d e f g h i j k l m n] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n))
-          (invoke [this a b c d e f g h i j k l m n o] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o))
-          (invoke [this a b c d e f g h i j k l m n o p] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p))
-          (invoke [this a b c d e f g h i j k l m n o p q] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p " " q))
-          (invoke [this a b c d e f g h i j k l m n o p q r] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p " " q " " r))
-          (invoke [this a b c d e f g h i j k l m n o p q r s] (str this " " a " " b " " c " " d " " e " " f " " g " " h " " i " " j " " k " " l " " m " " n " " o " " p " " q " " r " " s))
+        clojure.lang.IFn
+        (invoke [this] (-expand this {} nil))
+        (invoke [this a] (if (map? a)
+                           (-expand this a nil)
+                           (-expand this {} [a])))
+        (invoke [this a b]
+          (if (map? a)
+            (-expand this a [b])
+            (-expand this {} [a b])))
+        (invoke [this a b c]
+          (if (map? a)
+            (-expand this a [b c])
+            (-expand this {} [a b c])))
+        (invoke [this a b c d]
+          (if (map? a)
+            (-expand this a [b c d])
+            (-expand this {} [a b c d])))
+        (invoke [this a b c d e]
+          (if (map? a)
+            (-expand this a [b c d e])
+            (-expand this {} [a b c d e])))
+        (invoke [this a b c d e f]
+          (if (map? a)
+            (-expand this a [b c d e f])
+            (-expand this {} [a b c d e f])))
+        (invoke [this a b c d e f g]
+          (if (map? a)
+            (-expand this a [b c d e f g])
+            (-expand this {} [a b c d e f g])))
+        (invoke [this a b c d e f g h]
+          (if (map? a)
+            (-expand this a [b c d e f g h])
+            (-expand this {} [a b c d e f g h])))
+        (invoke [this a b c d e f g h i]
+          (if (map? a)
+            (-expand this a [b c d e f g h i])
+            (-expand this {} [a b c d e f g h i])))
+        (invoke [this a b c d e f g h i j]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j])
+            (-expand this {} [a b c d e f g h i j])))
+        (invoke [this a b c d e f g h i j k]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j k])
+            (-expand this {} [a b c d e f g h i j k])))
+        (invoke [this a b c d e f g h i j k l]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j k l])
+            (-expand this {} [a b c d e f g h i j k l])))
+        (invoke [this a b c d e f g h i j k l m]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j k l m])
+            (-expand this {} [a b c d e f g h i j k l m])))
+        (invoke [this a b c d e f g h i j k l m n]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j k l m n])
+            (-expand this {} [a b c d e f g h i j k l m n])))
+        (invoke [this a b c d e f g h i j k l m n o]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j k l m n o])
+            (-expand this {} [a b c d e f g h i j k l m n o])))
+        (invoke [this a b c d e f g h i j k l m n o p]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j k l m n o p])
+            (-expand this {} [a b c d e f g h i j k l m n o p])))
+        (invoke [this a b c d e f g h i j k l m n o p q]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j k l m n o p q])
+            (-expand this {} [a b c d e f g h i j k l m n o p q])))
+        (invoke [this a b c d e f g h i j k l m n o p q r]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j k l m n o p q r])
+            (-expand this {} [a b c d e f g h i j k l m n o p q r])))
+        (invoke [this a b c d e f g h i j k l m n o p q r s]
+          (if (map? a)
+            (-expand this a [b c d e f g h i j k l m n o p q r s])
+            (-expand this {} [a b c d e f g h i j k l m n o p q r s])))
 
-          Object
-          (toString [_] classname)
+        Object
+        (toString [_] classname)
 
-          gc/IExpandable
-          (expand [this]
-            (mapcat
-             (fn [rule]
-               (gc/expand
-                (if (map? rule)
-                  [:& rule]
-                  rule)))
-             rules))
+        gc/IExpandable
+        (expand [this]
+          (mapcat
+           (fn [rule]
+             (gc/expand
+              (if (map? rule)
+                [:& rule]
+                rule)))
+           rules))
 
-          hiccup/HiccupTag
-          (-expand [_ attrs children]
-            (into [tag (update attrs :class #(conj (if (coll? %)
-                                                     %
-                                                     [(str %)])
-                                                   classname))] children))))
+        HiccupTag
+        (-expand [_ attrs children]
+          (expand-hiccup-tag tag classname attrs children component)))
       :cljs
-      (let [classname (classname-for varsym)]
-        (specify!
-            (fn [?props & children]
-              (let [[props children] (if (map? ?props)
-                                       [?props children]
-                                       [nil (cons ?props children)])
-                    props (update props :class #(if % (str % " " classname) classname))]
-                (into [tag props] children)))
-          Object
-          (toString [] classname) )))))
+      (let [render-fn (fn [?attrs & children]
+                        (expand-hiccup-tag tag
+                                           classname
+                                           (if (map? ?attrs) ?attrs {})
+                                           (if (map? ?attrs) children (cons ?attrs children))
+                                           component))
+            component (specify! render-fn
+                        HiccupTag
+                        (-expand [_ attrs children]
+                          (expand-hiccup-tag tag classname attrs children component))
+
+                        Object
+                        (toString [_] classname))]
+        (js/Object.defineProperty component "name" #js {:value (str varsym)})
+        component))))
+
 
 #?(:clj
-   (defmacro defstyled [sym el & styles]
-     (let [varsym (symbol (name (ns-name *ns*)) (name sym))]
+   (defmacro defstyled [sym tag & styles]
+     (let [varsym (symbol (name (ns-name *ns*)) (name sym))
+           [styles fn-tails] (split-with (complement list?) styles)]
        `(def ~(with-meta sym {::css true})
-          (styled '~varsym '~el (list ~@styles))))))
-
-#?(:clj
-   (defmacro defcss [sym & styles]
-     `(defstyled ~sym :div ~@styles)))
+          (styled '~varsym
+                  ~(classname-for varsym)
+                  '~tag
+                  ~(into [] styles)
+                  ~(when (seq fn-tails)
+                     `(fn ~@fn-tails)))))))
 
 #?(:clj
    (defn defined-styles []
@@ -238,14 +332,20 @@
 
   ;; You can use a map to define CSS properties
 
-  (defcss tea
-    {:color "MediumSeaGreen"})
+  (defstyled tea :div
+    {:color "MediumSeaGreen"}
+    ([_]
+     [:h2 "ok"])
+    ([_ x]
+     [:h1 "tasty" x]))
   ;; => #'lambdaisland.ornament/tea
+
+  (tea {:class "more" :style "xxx" :stuff "etc"} "x")
 
   ;; Or have vectors to define styles for nested elements, you have full garden
   ;; syntax available.
 
-  (defcss chocolate
+  (defstyled chocolate :div
     {:color "chocolate"}
     [:a {:color "coral"}])
   ;; => #'lambdaisland.ornament/chocolate
@@ -430,4 +530,6 @@
                     :title "Hello"}
             [:a {:href "/here"} "Here"]]]))
   ;; => "<body><nav class=\"ornament__navbar my-cool-navbar\" title=\"Hello\"><a href=\"/here\">Here</a></nav></body>"
+
+  (defined-styles)
   )
