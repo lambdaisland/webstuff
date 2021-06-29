@@ -80,7 +80,8 @@
   (str "<!DOCTYPE html>\n" (render-html* h)))
 
 (defn render
-  ([h])
+  ([h]
+   (render h nil))
   ([h {:keys [doctype?]
        :or {doctype? true}}]
    ((if doctype? render-html render-html*) (html h))))

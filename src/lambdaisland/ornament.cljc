@@ -549,5 +549,5 @@
             [:a {:href "/here"} "Here"]]]))
   ;; => "<body><nav class=\"ornament__navbar my-cool-navbar\" title=\"Hello\"><a href=\"/here\">Here</a></nav></body>"
 
-  (defined-styles)
+  (spit "resources/public/css/compiled/ornament.css" (defined-styles))
   )
