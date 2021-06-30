@@ -15,6 +15,17 @@
      (:require-macros [lambdaisland.ornament :refer [defstyled]])))
 
 #?(:clj
+   (defonce registry (atom {})))
+
+(defprotocol StyledComponent
+  (classname [_])
+  (as-garden [_])
+  (css [_])
+  (rules [_])
+  (tag [_])
+  (component [_]))
+
+#?(:clj
    (do
      (def girouette-api
        (atom (girouette/make-api
@@ -24,13 +35,6 @@
 
      (defn class-name->garden [n]
        ((:class-name->garden @girouette-api) n))
-
-     (defprotocol Style
-       (classname [_])
-       (as-garden [_])
-       (css [_])
-       (rules [_])
-       (tag [_]))
 
      (defmethod print-method ::styled [x writer]
        (.write writer (classname x)))
@@ -176,7 +180,7 @@
   (if component
     (let [child (apply component (dissoc attrs :id :class :style) children)]
       (expand-hiccup-tag tag classname
-                         (into (meta child)
+                         (into (or (meta child) {})
                                (select-keys attrs [:id :class :style]))
                          [child]
                          nil))
@@ -187,7 +191,7 @@
    #?(:clj
       ^{:type ::styled}
       (reify
-        Style
+        StyledComponent
         (classname [_] classname)
         (as-garden [_] (into [(str "." classname)] (process-rules rules)))
         (css [this] (gc/compile-css
@@ -195,6 +199,7 @@
                      (as-garden this)))
         (rules [_] rules)
         (tag [_] tag)
+        (component [_] component)
 
         clojure.lang.IFn
         (invoke [this] (-expand this {} nil))
@@ -298,40 +303,66 @@
                                            (if (map? ?attrs) children (cons ?attrs children))
                                            component))
             component (specify! render-fn
+                        StyledComponent
+                        (classname [_] classname)
+                        (as-garden [_] )
+                        (css [_] )
+                        (rules [_] )
+                        (tag [_] tag)
+                        (component [_] component)
+
                         HiccupTag
                         (-expand [_ attrs children]
                           (expand-hiccup-tag tag classname attrs children component))
-
                         Object
                         (toString [_] classname))]
         (js/Object.defineProperty component "name" #js {:value (str varsym)})
         component))))
 
+(defn qualify-sym [s]
+  (if (simple-symbol? s)
+    (or (some-> (ns-refers *ns*) (get s) symbol)
+        (symbol (str *ns*) (str s)))
+    (let [ns (namespace s)
+          n (name s)
+        aliases (ns-aliases *ns*)]
+      (symbol (or (some-> aliases (get (symbol ns)) ns-name str) ns) n))))
 
 #?(:clj
    (defmacro defstyled [sym tagname & styles]
      (let [varsym (symbol (name (ns-name *ns*)) (name sym))
+         classname (classname-for varsym)
            [styles fn-tails] (split-with (complement list?) styles)
-           tagname (eval tagname)
-           inherit? (satisfies? Style tagname)
-           tag (if inherit?
-                 (tag tagname)
-                 tagname)
-           styles (into (if inherit?
-                          (rules tagname)
-                          [])
-                        styles)]
+           tag (if (keyword? tagname)
+                 tagname
+                 (get-in @registry [(qualify-sym tagname) :tag]))
+           rules (cond
+                    (keyword? tagname)
+                    (vec styles)
+                    (symbol? tagname)
+                    (into (or (:styles (get @registry (qualify-sym tagname))) [])
+                          styles))]
+       (swap! registry assoc varsym {:tag tag
+                                     :rules rules
+                                     :classname classname})
        `(def ~(with-meta sym {::css true})
-          (styled '~varsym
-                  ~(classname-for varsym)
-                  ~tag
-                  ~(into [] styles)
-                  ~(when (seq fn-tails)
-                     `(fn ~@fn-tails)))))))
+            (styled '~varsym
+                    ~classname
+                    ~tag
+                    ~rules
+                    ~(when (seq fn-tails)
+                       `(fn ~@fn-tails)))))))
 
 #?(:clj
    (defn defined-styles []
-     (str/join "\n"
+     ;; Use registry, instead of inspecting metadata, for better cljs-only
+     ;; support
+     (gc/compile-css
+      {:pretty-print? false}
+      (for [[_ {:keys [classname rules]}] @registry]
+        (into [(str "." classname)] (process-rules rules))))
+
+     #_(str/join "\n"
                (sequence
                 (comp (mapcat ns-publics)
                       (map val)
