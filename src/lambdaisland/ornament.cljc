@@ -200,18 +200,18 @@
     :else
     [(str class)]))
 
-(defn expand-hiccup-tag [tag classname attrs children component]
+(defn expand-hiccup-tag [tag css-class attrs children component]
   (if component
     (let [child (apply component (dissoc attrs :id :class :style) children)]
-      (expand-hiccup-tag tag classname
+      (expand-hiccup-tag tag css-class
                          (into (or (meta child) {})
                                (select-keys attrs [:id :class :style]))
                          [child]
                          nil))
-    (into [tag (update attrs :class add-class classname)] children)))
+    (into [tag (update attrs :class add-class css-class)] children)))
 
 (defn styled
-  ([varsym classname tag rules component]
+  ([varsym css-class tag rules component]
    #?(:clj
       ^{:type ::styled}
       (reify
@@ -222,7 +222,7 @@
              (if (str/starts-with? (str c) p)
                (reduced (subs (str c) (count p)))
                c))
-           classname
+           css-class
            *strip-prefixes*))
         (as-garden [this]
           (into [(str "." (classname this))]
@@ -331,13 +331,13 @@
       :cljs
       (let [render-fn (fn ^{:type ::styled} [?attrs & children]
                         (expand-hiccup-tag tag
-                                           classname
+                                           css-class
                                            (if (map? ?attrs) ?attrs {})
                                            (if (map? ?attrs) children (cons ?attrs children))
                                            component))
             component (specify! render-fn
                         StyledComponent
-                        (classname [_] classname)
+                        (classname [_] css-class)
                         (as-garden [_] )
                         (css [_] )
                         (rules [_] )
@@ -346,9 +346,9 @@
 
                         HiccupTag
                         (-expand [_ attrs children]
-                          (expand-hiccup-tag tag classname attrs children component))
+                          (expand-hiccup-tag tag css-class attrs children component))
                         Object
-                        (toString [_] classname))]
+                        (toString [_] css-class))]
         (js/Object.defineProperty component "name" #js {:value (str varsym)})
         component))))
 
@@ -369,7 +369,7 @@
 #?(:clj
    (defmacro defstyled [sym tagname & styles]
      (let [varsym (symbol (name (ns-name *ns*)) (name sym))
-           classname (classname-for varsym)
+           css-class (classname-for varsym)
            [styles fn-tails] (split-with (complement fn-tail?) styles)
            tag (if (keyword? tagname)
                  tagname
@@ -386,7 +386,7 @@
                     (assoc varsym {:var varsym
                                    :tag tag
                                    :rules rules
-                                   :classname classname})
+                                   :classname css-class})
                     ;; We give each style an incrementing index so they get a
                     ;; predictable order (i.e. source order). If a style is
                     ;; evaluated again (e.g. REPL use) then it keeps its
@@ -394,7 +394,7 @@
                     (update-in [varsym :index] (fnil identity (count reg))))))
        `(def ~(with-meta sym {::css true})
           (styled '~varsym
-                  ~classname
+                  ~css-class
                   ~tag
                   ~rules
                   ~(when (seq fn-tails)
@@ -402,10 +402,10 @@
 
 #?(:clj
    (defn defined-garden []
-     (for [{:keys [classname rules]} (->> @registry
+     (for [{:keys [css-class rules]} (->> @registry
                                           vals
                                           (sort-by :index))]
-       (into [(str "." classname)] (process-rules rules)))))
+       (into [(str "." css-class)] (process-rules rules)))))
 
 #?(:clj
    (defn defined-styles []
