@@ -26,6 +26,10 @@
      registry
      (atom {})))
 
+(def ^:dynamic *strip-prefixes*
+  "Prefixes to be stripped from class names in generated CSS"
+  nil)
+
 (defprotocol StyledComponent
   (classname [_])
   (as-garden [_])
@@ -88,7 +92,6 @@
        (let [prefix (or (:ornament/prefix (meta (the-ns (symbol (namespace varsym)))))
                         (-> varsym
                             namespace
-                            #_  (str/replace #"lambdaisland\." "")
                             (str/replace #"\." "_")))]
          (str prefix "__" (munge-str (name varsym)))))
 
@@ -213,8 +216,17 @@
       ^{:type ::styled}
       (reify
         StyledComponent
-        (classname [_] classname)
-        (as-garden [_] (into [(str "." classname)] (process-rules rules)))
+        (classname [_]
+          (reduce
+           (fn [c p]
+             (if (str/starts-with? (str c) p)
+               (reduced (symbol (subs (str c) (count p))))
+               c))
+           classname
+           *strip-prefixes*))
+        (as-garden [this]
+          (into [(str "." (classname this))]
+                (process-rules rules)))
         (css [this] (gc/compile-css
                      {:pretty-print? false}
                      (as-garden this)))
@@ -301,7 +313,7 @@
             (-expand this {} [a b c d e f g h i j k l m n o p q r s])))
 
         Object
-        (toString [_] classname)
+        (toString [this] (classname this))
 
         gc/IExpandable
         (expand [this]
@@ -314,8 +326,8 @@
            rules))
 
         HiccupTag
-        (-expand [_ attrs children]
-          (expand-hiccup-tag tag classname attrs children component)))
+        (-expand [this attrs children]
+          (expand-hiccup-tag tag (classname this) attrs children component)))
       :cljs
       (let [render-fn (fn ^{:type ::styled} [?attrs & children]
                         (expand-hiccup-tag tag
