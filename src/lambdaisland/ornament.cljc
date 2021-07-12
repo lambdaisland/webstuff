@@ -15,7 +15,16 @@
      (:require-macros [lambdaisland.ornament :refer [defstyled]])))
 
 #?(:clj
-   (defonce registry (atom {})))
+   (defonce ^{:doc "Registry of styles
+
+     Keys are fully qualified symbols (var names), values are maps with the
+     individual `:tag`, `:rules`, `:classname`. We add an `:index` to be able to
+     iterate over the components/styles in source order. This is now the
+     preferred way to iterate over all styles (as in [[defined-styles]]), rather
+     than the old approach of finding all vars with a given metadata attached to
+     them."}
+     registry
+     (atom {})))
 
 (defprotocol StyledComponent
   (classname [_])
@@ -332,27 +341,37 @@
 #?(:clj
    (defmacro defstyled [sym tagname & styles]
      (let [varsym (symbol (name (ns-name *ns*)) (name sym))
-         classname (classname-for varsym)
+           classname (classname-for varsym)
            [styles fn-tails] (split-with (complement list?) styles)
            tag (if (keyword? tagname)
                  tagname
                  (get-in @registry [(qualify-sym tagname) :tag]))
            rules (cond
-                    (keyword? tagname)
-                    (vec styles)
-                    (symbol? tagname)
-                    (into (or (:styles (get @registry (qualify-sym tagname))) [])
-                          styles))]
-       (swap! registry assoc varsym {:tag tag
-                                     :rules rules
-                                     :classname classname})
+                   (keyword? tagname)
+                   (vec styles)
+                   (symbol? tagname)
+                   (into (or (:styles (get @registry (qualify-sym tagname))) [])
+                         styles))]
+       (prn varsym)
+       (swap! registry
+              (fn [reg]
+                (prn varsym)
+                (-> reg
+                    (assoc varsym {:tag tag
+                                   :rules rules
+                                   :classname classname})
+                    ;; We give each style an incrementing index so they get a
+                    ;; predictable order (i.e. source order). If a style is
+                    ;; evaluated again (e.g. REPL use) then it keeps its
+                    ;; original index/position.
+                    (update-in [varsym :index] (fnil identity (count reg))))))
        `(def ~(with-meta sym {::css true})
-            (styled '~varsym
-                    ~classname
-                    ~tag
-                    ~rules
-                    ~(when (seq fn-tails)
-                       `(fn ~@fn-tails)))))))
+          (styled '~varsym
+                  ~classname
+                  ~tag
+                  ~rules
+                  ~(when (seq fn-tails)
+                     `(fn ~@fn-tails)))))))
 
 #?(:clj
    (defn defined-styles []
@@ -360,16 +379,18 @@
      ;; support
      (gc/compile-css
       {:pretty-print? false}
-      (for [[_ {:keys [classname rules]}] @registry]
+      (for [{:keys [classname rules]} (->> @registry
+                                           vals
+                                           (sort-by :index))]
         (into [(str "." classname)] (process-rules rules))))
 
      #_(str/join "\n"
-               (sequence
-                (comp (mapcat ns-publics)
-                      (map val)
-                      (filter (comp ::css meta))
-                      (map (comp css deref)))
-                (all-ns)))))
+                 (sequence
+                  (comp (mapcat ns-publics)
+                        (map val)
+                        (filter (comp ::css meta))
+                        (map (comp css deref)))
+                  (all-ns)))))
 
 (comment
 
