@@ -189,13 +189,13 @@
 (defn add-class [classes class]
   (cond
     (string? classes)
-    [classes class]
+    [class classes]
 
-    (= ::styled (type class))
-    [(str class)]
+    (= ::styled (type classes))
+    [class (str classes)]
 
     (and (sequential? classes) (seq classes))
-    (conj classes class)
+    (vec (cons class classes))
 
     :else
     [(str class)]))

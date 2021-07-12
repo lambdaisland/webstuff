@@ -40,8 +40,6 @@
   {:color "blue"}
   [simple {:color "red"}])
 
-(o/css ornament-in-ornament)
-
 #?(:clj
    (deftest css-test
      (is (= ".ot__simple{color:#fff}"
@@ -68,13 +66,18 @@
     "<span class=\"ot__simple\"></span>"
 
     [simple {:class "xxx"}]
-    "<span class=\"xxx ot__simple\"></span>"
+    "<span class=\"ot__simple xxx\"></span>"
 
     [simple {:class "xxx"} [:strong "child"]]
-    "<span class=\"xxx ot__simple\"><strong>child</strong></span>"
+    "<span class=\"ot__simple xxx\"><strong>child</strong></span>"
 
     [simple {:class "xxx" :style {:border-bottom "1px solid black"}} [:strong "child"]]
-    "<span class=\"xxx ot__simple\" style=\"border-bottom: 1px solid black;\"><strong>child</strong></span>"
+    "<span class=\"ot__simple xxx\" style=\"border-bottom: 1px solid black;\"><strong>child</strong></span>"
 
     [time {:date "2021-06-25" :time "10:11:12"}]
-    "<time datetime=\"2021-06-25 10:11:12\" class=\"ot__time\">2021-06-25 10:11:12</time>"))
+    "<time datetime=\"2021-06-25 10:11:12\" class=\"ot__time\">2021-06-25 10:11:12</time>"
+    [simple {:class time}]
+    "<span class=\"ot__simple ot__time\"></span>"
+
+    [simple {:class [time]}]
+    "<span class=\"ot__simple ot__time\"></span>"))
