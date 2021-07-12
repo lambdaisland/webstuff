@@ -338,11 +338,15 @@
              aliases (ns-aliases *ns*)]
          (symbol (or (some-> aliases (get (symbol ns)) ns-name str) ns) n)))))
 
+#?(:clj (defn fn-tail? [o]
+          (and (list? o)
+               (vector? (first o)))))
+
 #?(:clj
    (defmacro defstyled [sym tagname & styles]
      (let [varsym (symbol (name (ns-name *ns*)) (name sym))
            classname (classname-for varsym)
-           [styles fn-tails] (split-with (complement list?) styles)
+           [styles fn-tails] (split-with (complement fn-tail?) styles)
            tag (if (keyword? tagname)
                  tagname
                  (get-in @registry [(qualify-sym tagname) :tag]))
@@ -352,10 +356,8 @@
                    (symbol? tagname)
                    (into (or (:styles (get @registry (qualify-sym tagname))) [])
                          styles))]
-       (prn varsym)
        (swap! registry
               (fn [reg]
-                (prn varsym)
                 (-> reg
                     (assoc varsym {:tag tag
                                    :rules rules
