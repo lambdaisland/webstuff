@@ -220,7 +220,7 @@
           (reduce
            (fn [c p]
              (if (str/starts-with? (str c) p)
-               (reduced (symbol (subs (str c) (count p))))
+               (reduced (subs (str c) (count p)))
                c))
            classname
            *strip-prefixes*))
