@@ -36,25 +36,34 @@
    ^{:datetime (str date " " time)}
    [:<> date " " time]))
 
+(o/defstyled ornament-in-ornament :div
+  {:color "blue"}
+  [simple {:color "red"}])
+
+(o/css ornament-in-ornament)
+
 #?(:clj
    (deftest css-test
-     (is (= (o/css simple)
-            ".ot__simple{color:#fff}"))
+     (is (= ".ot__simple{color:#fff}"
+            (o/css simple)))
 
-     (is (= (o/css tokens)
-            ".ot__tokens{padding-left:1.25rem;padding-right:1.25rem;padding-top:.75rem;padding-bottom:.75rem;border-radius:.75rem}"))
+     (is (= ".ot__tokens{padding-left:1.25rem;padding-right:1.25rem;padding-top:.75rem;padding-bottom:.75rem;border-radius:.75rem}"
+            (o/css tokens)))
 
-     (is (= (o/css combined)
-            ".ot__combined{padding-left:1.25rem;padding-right:1.25rem;padding-top:.75rem;padding-bottom:.75rem;border-radius:.75rem;color:azure}"))
+     (is (= ".ot__combined{padding-left:1.25rem;padding-right:1.25rem;padding-top:.75rem;padding-bottom:.75rem;border-radius:.75rem;color:azure}"
+            (o/css combined)))
 
-     (is (= (o/css nested)
-            ".ot__nested{padding-left:.75rem;padding-right:.75rem}.ot__nested li{list-style:square}"))
+     (is (= ".ot__nested{padding-left:.75rem;padding-right:.75rem}.ot__nested li{list-style:square}"
+            (o/css nested)))
 
-     (is (= (o/css with-body)
-            ".ot__with_body{padding-left:1.25rem;padding-right:1.25rem;padding-top:.75rem;padding-bottom:.75rem;border-radius:.75rem;color:azure}"))))
+     (is (= ".ot__with_body{padding-left:1.25rem;padding-right:1.25rem;padding-top:.75rem;padding-bottom:.75rem;border-radius:.75rem;color:azure}"
+            (o/css with-body)))
+
+     (is (= ".ot__ornament_in_ornament{color:blue}.ot__ornament_in_ornament ot__simple{color:red}"
+            (o/css ornament-in-ornament)))))
 
 (deftest rendering-test
-  (are [hiccup html] (= (render hiccup) html)
+  (are [hiccup html] (= html (render hiccup))
     [simple]
     "<span class=\"ot__simple\"></span>"
 

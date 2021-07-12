@@ -102,7 +102,11 @@
      (defmulti process-tag (fn [[tag & _]] tag))
 
      (defmethod process-tag :default [v]
-       (into [(first v)] (map process-rule (next v))))
+       (let [tag (first v)]
+         (into [(if (= ::styled (type tag))
+                  (classname tag)
+                  tag)]
+               (map process-rule (next v)))))
 
      (defmethod process-tag :at-media [[_ media-queries & rules]]
        (gs/at-media media-queries (into [:&] (map process-rule) rules)))
@@ -170,7 +174,10 @@
      (defn process-rules [rules]
        (seq (reduce (fn [acc rule]
                       (let [r (process-rule rule)]
-                        (if (and (map? r) (map? (last acc)))
+                        (if (and (map? r)
+                                 (map? (last acc))
+                                 (not (record? r))
+                                 (not (record? (last acc))))
                           (conj (vec (butlast acc))
                                 (merge (last acc) r))
                           (conj acc r))))
@@ -180,10 +187,15 @@
   (cond
     (string? classes)
     [classes class]
-    (seq classes)
+
+    (= ::styled (type class))
+    [(str class)]
+
+    (and (sequential? classes) (seq classes))
     (conj classes class)
+
     :else
-    [class]))
+    [(str class)]))
 
 (defn expand-hiccup-tag [tag classname attrs children component]
   (if component
@@ -359,7 +371,8 @@
        (swap! registry
               (fn [reg]
                 (-> reg
-                    (assoc varsym {:tag tag
+                    (assoc varsym {:var varsym
+                                   :tag tag
                                    :rules rules
                                    :classname classname})
                     ;; We give each style an incrementing index so they get a
@@ -376,23 +389,21 @@
                      `(fn ~@fn-tails)))))))
 
 #?(:clj
+   (defn defined-garden []
+     (for [{:keys [classname rules]} (->> @registry
+                                          vals
+                                          (sort-by :index))]
+       (into [(str "." classname)] (process-rules rules)))))
+
+#?(:clj
    (defn defined-styles []
      ;; Use registry, instead of inspecting metadata, for better cljs-only
      ;; support
-     (gc/compile-css
-      {:pretty-print? false}
-      (for [{:keys [classname rules]} (->> @registry
-                                           vals
-                                           (sort-by :index))]
-        (into [(str "." classname)] (process-rules rules))))
-
-     #_(str/join "\n"
-                 (sequence
-                  (comp (mapcat ns-publics)
-                        (map val)
-                        (filter (comp ::css meta))
-                        (map (comp css deref)))
-                  (all-ns)))))
+     (->> @registry
+          vals
+          (sort-by :index)
+          (map (comp css deref resolve :var))
+          (str/join "\n"))))
 
 (comment
 
@@ -604,5 +615,5 @@
             [:a {:href "/here"} "Here"]]]))
   ;; => "<body><nav class=\"ornament__navbar my-cool-navbar\" title=\"Hello\"><a href=\"/here\">Here</a></nav></body>"
 
-  (spit "resources/public/css/compiled/ornament.css" (defined-styles))
+  (spit "/tmp/ornament.css" (defined-styles))
   )
