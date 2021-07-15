@@ -378,7 +378,7 @@
                    (keyword? tagname)
                    (vec styles)
                    (symbol? tagname)
-                   (into (or (:styles (get @registry (qualify-sym tagname))) [])
+                   (into (or (:rules (get @registry (qualify-sym tagname))) [])
                          styles))]
        (swap! registry
               (fn [reg]

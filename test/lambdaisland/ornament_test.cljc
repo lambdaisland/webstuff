@@ -12,6 +12,7 @@
 (o/defstyled simple :span
   {:color "#ffffff"})
 
+
 (o/defstyled tokens :span
   :px-5 :py-3 :rounded-xl)
 
@@ -40,6 +41,14 @@
   {:color "blue"}
   [simple {:color "red"}])
 
+(o/defstyled base :span
+  {:color "blue"
+   :background-color "red"})
+
+(o/defstyled inherited base
+  {:color "green"
+   :list-style :square})
+
 #?(:clj
    (deftest css-test
      (is (= ".ot__simple{color:#fff}"
@@ -58,7 +67,10 @@
             (o/css with-body)))
 
      (is (= ".ot__ornament_in_ornament{color:blue}.ot__ornament_in_ornament ot__simple{color:red}"
-            (o/css ornament-in-ornament)))))
+            (o/css ornament-in-ornament)))
+
+     (is (= ".ot__inherited{color:green;background-color:red;list-style:square}"
+            (o/css inherited)))))
 
 (deftest rendering-test
   (are [hiccup html] (= html (render hiccup))
