@@ -7,6 +7,7 @@
                       [garden.types :as gt]
                       [garden.stylesheet :as gs]
                       [girouette.tw.core :as girouette]
+                      [girouette.tw.preflight :as girouette-preflight]
                       [girouette.tw.typography :as girouette-typography]
                       [girouette.tw.color :as girouette-color]
                       [girouette.tw.default-api :as girouette-default]])
@@ -408,14 +409,17 @@
        (into [(str "." css-class)] (process-rules rules)))))
 
 #?(:clj
-   (defn defined-styles []
+   (defn defined-styles [& [{:keys [preflight?]
+                             :or {preflight? false}}]]
      ;; Use registry, instead of inspecting metadata, for better cljs-only
      ;; support
-     (->> @registry
-          vals
-          (sort-by :index)
-          (map (comp css deref resolve :var))
-          (str/join "\n"))))
+     (let [registry-css (->> @registry
+                             vals
+                             (sort-by :index)
+                             (map (comp css deref resolve :var)))]
+       (cond->> registry-css
+         preflight? (into [(gc/compile-css girouette-preflight/preflight)])
+         :always (str/join "\n")))))
 
 (comment
 
