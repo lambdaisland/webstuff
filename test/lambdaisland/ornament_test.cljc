@@ -49,10 +49,10 @@
   {:color "green"
    :list-style :square})
 
-(def tokens {:main-color "green"})
+(def my-tokens {:main-color "green"})
 
 (o/defstyled with-code :div
-  {:background-color (-> tokens :main-color)})
+  {:background-color (-> my-tokens :main-color)})
 
 #?(:clj
    (deftest css-test
