@@ -49,6 +49,11 @@
   {:color "green"
    :list-style :square})
 
+(def tokens {:main-color "green"})
+
+(o/defstyled with-code :div
+  {:background-color (-> tokens :main-color)})
+
 #?(:clj
    (deftest css-test
      (is (= ".ot__simple{color:#fff}"
@@ -70,7 +75,10 @@
             (o/css ornament-in-ornament)))
 
      (is (= ".ot__inherited{color:green;background-color:red;list-style:square}"
-            (o/css inherited)))))
+            (o/css inherited)))
+
+     (is (= ".ot__with_code{background-color:green}"
+            (o/css with-code)))))
 
 (deftest rendering-test
   (are [hiccup html] (= html (render hiccup))
