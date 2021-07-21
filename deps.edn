@@ -14,6 +14,7 @@
   girouette/girouette {:git/url   "https://github.com/green-coder/girouette.git"
                        :sha       "efcfea29e9744c475f3bace9a2843207b621801b"
                        :deps/root "lib/girouette"}
+  meta-merge/meta-merge {:mvn/version "1.0.0"}
 
   ;; Thicc
   camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}
