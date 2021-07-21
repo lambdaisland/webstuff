@@ -24,7 +24,11 @@
      iterate over the components/styles in source order. This is now the
      preferred way to iterate over all styles (as in [[defined-styles]]), rather
      than the old approach of finding all vars with a given metadata attached to
-     them."}
+     them.
+
+     Clojure-only because we only deal with CSS on the backend, the frontend
+     only knows about classnames. `:component` points at a StyledComponent
+     instance that can be used to get the [[css]] for that component."}
      registry
      (atom {})))
 
@@ -438,26 +442,42 @@
                    (vec styles)
                    (symbol? tagname)
                    (into (or (:rules (get @registry (qualify-sym tagname))) [])
-                         styles))]
+                         styles))
+           styled-form `(styled '~varsym
+                                ~css-class
+                                ~tag
+                                ~rules
+                                ~(when (seq fn-tails)
+                                   `(fn ~@fn-tails)))]
        (swap! registry
               (fn [reg]
                 (-> reg
                     (assoc varsym {:var varsym
                                    :tag tag
                                    :rules rules
-                                   :classname css-class})
+                                   :classname css-class
+                                   ;; For ClojureScript support (but also used
+                                   ;; in Clojure-only), add the Clojure-version
+                                   ;; of the styled component to the registry
+                                   ;; directly during macroexpansion, so that
+                                   ;; even in a ClojureScript-only world we can
+                                   ;; access it later to compile the styles,
+                                   ;; even though the styles themselves are
+                                   ;; never part of a ClojureScript build.
+                                   :component (eval styled-form)})
                     ;; We give each style an incrementing index so they get a
                     ;; predictable order (i.e. source order). If a style is
                     ;; evaluated again (e.g. REPL use) then it keeps its
                     ;; original index/position.
                     (update-in [varsym :index] (fnil identity (count reg))))))
+       ;; Actual output of the macro, this creates a styled component as a var,
+       ;; so that it can be used in Hiccup. This `styled` invocation in turn is
+       ;; platform-specific, the ClojureScript version only knows how to render
+       ;; the component with the appropriate classes, it has no knowledge of the
+       ;; actual styles, which are expected to be rendered on the backend or
+       ;; during compilation.
        `(def ~(with-meta sym {::css true})
-          (styled '~varsym
-                  ~css-class
-                  ~tag
-                  ~rules
-                  ~(when (seq fn-tails)
-                     `(fn ~@fn-tails)))))))
+          ~styled-form))))
 
 #?(:clj
    (defn defined-garden []
@@ -474,7 +494,7 @@
      (let [registry-css (->> @registry
                              vals
                              (sort-by :index)
-                             (map (comp css deref resolve :var)))]
+                             (map (comp css :component)))]
        (cond->> registry-css
          preflight? (into [(gc/compile-css girouette-preflight/preflight)])
          :always (str/join "\n")))))

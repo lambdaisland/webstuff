@@ -192,3 +192,15 @@
 
   ;; Reset to defaults
   (o/set-tokens! {}))
+
+(deftest defined-styles-test
+  (reset! o/registry {})
+
+  (o/defstyled my-styles :div
+    {:color "red"})
+
+  (o/defstyled more-styles :span
+    :rounded-xl)
+
+  (is (= ".ot__my_styles{color:red}\n.ot__more_styles{border-radius:.75rem}"
+         (o/defined-styles))))
