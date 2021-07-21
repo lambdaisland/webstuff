@@ -10,7 +10,8 @@
                       [girouette.tw.preflight :as girouette-preflight]
                       [girouette.tw.typography :as girouette-typography]
                       [girouette.tw.color :as girouette-color]
-                      [girouette.tw.default-api :as girouette-default]])
+                      [girouette.tw.default-api :as girouette-default]
+                      [meta-merge.core :as meta-merge]])
             [lambdaisland.hiccup.protocols :refer [HiccupTag -expand]])
   #?(:cljs
      (:require-macros [lambdaisland.ornament :refer [defstyled]])))
@@ -39,13 +40,72 @@
   (tag [_])
   (component [_]))
 
+(declare process-rule)
+
 #?(:clj
    (do
-     (def girouette-api
-       (atom (girouette/make-api
-              girouette-default/default-components
-              {:color-map girouette-color/default-color-map
-               :font-family-map girouette-typography/default-font-family-map})))
+     (defonce girouette-api (atom nil))
+
+     (def default-tokens
+       {:components girouette-default/default-components
+        :colors     girouette-color/default-color-map
+        :fonts      girouette-typography/default-font-family-map})
+
+     (defn set-tokens!
+       "Set \"design tokens\": colors, fonts, and components
+
+        This configures Girouette, so that these tokens become available inside
+        Ornament style declarations.
+
+        - `:colors` : map from keyword to 6-digit hex color, without leading `#`
+        - `:fonts`: map from keyword to font stack (comman separated string)
+        - `:components`: sequence of Girouette components, each a map with
+          `:id` (keyword), `:rules` (string, instaparse, can be omitted), and
+          `:garden` (map, or function taking instaparse results and returning Garden
+          map)
+
+        If `:rules` is omitted we assume this is a static token, and we'll
+        generate a rule of the form `token-id = <'token-id'>`.
+
+        `:garden` can be a function, in which case it receives a map with a
+        `:compoent-data` key containing the instaparse parse tree. Literal maps or
+        vectors are wrapped in a function, in case the returned Garden is fixed. The
+        resulting Garden styles are processed again as in `defstyled`, so you can use
+        other Girouette or other tokens in there as well. Use `[:&]` for returning
+        multiple tokens/maps/stylesUse `[:&]` for returning multiple
+        tokens/maps/styles.
+
+        By default these are added to the Girouette defaults, use meta-merge
+        annotations (e.g. `{:colors ^:replace {...}}`) to change that behaviour."
+       [{:keys [components colors fonts]}]
+       (let [{:keys [components colors fonts]}
+             (meta-merge/meta-merge
+              default-tokens
+              {:components
+               (into (empty components)
+                     (map (fn [{:keys [id rules garden] :as c}]
+                            (cond-> c
+                              (not rules)
+                              (assoc :rules (str "\n" (name id) " = <'" (name id) "'>" "\n"))
+                              (not (fn? garden))
+                              (assoc :garden (constantly garden))
+
+                              :always
+                              (update :garden #(comp process-rule %)))))
+                     components)
+               :colors (into (empty colors)
+                             (map (juxt (comp name key) val))
+                             colors)
+               :fonts (into (empty fonts)
+                            (map (juxt (comp name key) val))
+                            fonts)})]
+         (reset! girouette-api
+                 (girouette/make-api
+                  components
+                  {:color-map colors
+                   :font-family-map fonts}))))
+
+     (defonce set-default-tokens (set-tokens! nil))
 
      (defn class-name->garden [n]
        ((:class-name->garden @girouette-api) n))
@@ -101,8 +161,6 @@
          (str/join sep val)
          val))
 
-     (declare process-rule)
-
      (defmulti process-tag (fn [[tag & _]] tag))
 
      (defmethod process-tag :default [v]
@@ -126,11 +184,11 @@
 
      (defmethod process-tag :at-supports [[_ feature-queries & rules]]
        (gt/->CSSAtRule :feature {:feature-queries feature-queries
-                                 :rules (into [:&] rules)}))
+                                 :rules           (into [:&] rules)}))
 
      (defmethod process-tag :at-keyframes [[_ identifier & frames]]
        (gt/->CSSAtRule :keyframes {:identifier identifier
-                                   :frames frames}))
+                                   :frames     frames}))
 
      (defmethod process-tag :rgb [[_ r g b]]
        (gcolor/rgb [r g b]))

@@ -101,3 +101,94 @@
 
     [simple {:class [time]}]
     "<span class=\"ot__simple ot__time\"></span>"))
+
+(o/set-tokens! {:colors {:primary "001122"}
+                :fonts {:system "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji"}
+                :components [{:id :full-center
+                              :garden {:display "inline-flex"
+                                       :align-items "center"}}
+                             {:id :full-center-bis
+                              :garden [:& :inline-flex :items-center]}
+                             {:id :custom-bullets
+                              :rules "custom-bullets = <'bullets-'> bullet-char
+                                      <bullet-char> = #\".\""
+                              :garden (fn [{[bullet-char] :component-data}]
+                                        [:&
+                                         {:list-style "none"
+                                          :padding 0
+                                          :margin 0}
+                                         [:li
+                                          {:padding-left "1rem"
+                                           :text-indent "-0.7rem"}]
+                                         ["li::before"
+                                          {:content bullet-char}]])}]})
+
+(o/defstyled custok1 :div
+  :bg-primary)
+
+(o/defstyled custok2 :div
+  :font-system)
+
+(o/defstyled custok3 :div
+  :full-center)
+
+(o/defstyled custok4 :div
+  :full-center-bis)
+
+(o/defstyled custok5 :ul
+  :bullets-🐻)
+
+(deftest custom-tokens-test
+  (is (= ".ot__custok1{--gi-bg-opacity:1;background-color:rgba(0,17,34,var(--gi-bg-opacity))}"
+         (o/css custok1)))
+
+  (is (= ".ot__custok2{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji}"
+         (o/css custok2)))
+
+  (is (= ".ot__custok3{display:inline-flex;align-items:center}"
+         (o/css custok3)))
+
+  (is (= ".ot__custok4{display:inline-flex;align-items:center}"
+         (o/css custok4)))
+
+  (is (= ".ot__custok5{list-style:none;padding:0;margin:0}.ot__custok5 li{padding-left:1rem;text-indent:-0.7rem}.ot__custok5 li::before{content:🐻}"
+         (o/css custok5))))
+
+(deftest meta-merge-tokens-test
+  ;; establish baseline
+  (is (= {:--gi-bg-opacity 1, :background-color "rgba(239,68,68,var(--gi-bg-opacity))"}
+         (o/process-rule :bg-red-500)))
+
+  (is (= {:font-family "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace"}
+         (o/process-rule :font-mono)))
+
+  (is (= {:border-radius "0.75rem"}
+         (o/process-rule :rounded-xl)))
+
+  ;; Replace the default colors/fonts, leave the components so we can still do bg-* or font-*
+  (o/set-tokens! {:colors ^:replace {:primary "001122"}
+                  :fonts ^:replace {:system "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji"}})
+
+  ;; The built-in ones are all gone
+  (is (nil? (o/process-rule :bg-red-500)))
+  (is (nil? (o/process-rule :font-mono)))
+
+  (is {:--gi-bg-opacity 1, :background-color "rgba(0,17,34,var(--gi-bg-opacity))"}
+      (o/process-rule :bg-primary))
+
+  (is {:font-family "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji"}
+      (o/process-rule :font-system))
+
+
+  ;; Replace the components
+  (o/set-tokens! {:components ^:replace [{:id :full-center
+                                          :garden {:display "inline-flex"
+                                                   :align-items "center"}}]})
+
+  (is (= {:display "inline-flex", :align-items "center"}
+         (o/process-rule :full-center)))
+
+  (is (nil? (o/process-rule :rounded-xl)))
+
+  ;; Reset to defaults
+  (o/set-tokens! {}))
