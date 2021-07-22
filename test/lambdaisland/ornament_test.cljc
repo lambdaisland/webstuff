@@ -54,6 +54,12 @@
 (o/defstyled with-code :div
   {:background-color (-> my-tokens :main-color)})
 
+(o/defstyled with-media :div
+  {:padding "0 1rem 1rem"}
+  [:at-media {:min-width "1rem"}
+   {:grid-gap "1rem"
+    :padding "0 2rem 2rem"}])
+
 #?(:clj
    (deftest css-test
      (is (= ".ot__simple{color:#fff}"
@@ -78,7 +84,10 @@
             (o/css inherited)))
 
      (is (= ".ot__with_code{background-color:green}"
-            (o/css with-code)))))
+            (o/css with-code)))
+
+     (is (= ".ot__with_media{padding:0 1rem 1rem}@media(min-width:1rem){.ot__with_media{grid-gap:1rem;padding:0 2rem 2rem}}"
+            (o/css with-media)))))
 
 (deftest rendering-test
   (are [hiccup html] (= html (render hiccup))
