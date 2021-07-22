@@ -45,7 +45,15 @@
   (reify muuntaja-format/EncodeToBytes
     (encode-to-bytes [_ data charset]
       (let [view (get (meta data) :view-fn)
-            rendered (view data)]
+            rendered (cond
+                       (ifn? view)
+                       (view data)
+
+                       (string? data)
+                       data
+
+                       :else
+                       (pr-str data))]
         (.getBytes ^String rendered ^String charset)))
     muuntaja-format/EncodeToOutputStream
     (encode-to-output-stream [_ data charset]
@@ -150,9 +158,16 @@
                              :uri (:uri request)}
              :exception error)
   {:status 500
-   :body {:type "exception"
-          :class (.getName (.getClass error))
-          :message (.getMessage error)}})
+   :body
+   ^{:view-fn
+     (fn [{:keys [type class message]}]
+       [:div
+        [:h1 "500 Server Error"]
+        [:h2 class]
+        [:p message]])}
+   {:type "exception"
+    :class (.getName (.getClass error))
+    :message (.getMessage error)}})
 
 (defn ring-default-handler
   "The default fallback handler
