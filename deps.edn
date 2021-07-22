@@ -30,7 +30,7 @@
  :aliases
  {:dev
   {:extra-paths ["dev"]
-   :extra-deps  {}}
+   :extra-deps  {djblue/portal {:mvn/version "RELEASE"}}}
 
   :test
   {:extra-paths ["test"]

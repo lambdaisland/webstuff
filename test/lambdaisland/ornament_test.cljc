@@ -111,27 +111,6 @@
     [simple {:class [time]}]
     "<span class=\"ot__simple ot__time\"></span>"))
 
-(o/set-tokens! {:colors {:primary "001122"}
-                :fonts {:system "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji"}
-                :components [{:id :full-center
-                              :garden {:display "inline-flex"
-                                       :align-items "center"}}
-                             {:id :full-center-bis
-                              :garden [:& :inline-flex :items-center]}
-                             {:id :custom-bullets
-                              :rules "custom-bullets = <'bullets-'> bullet-char
-                                      <bullet-char> = #\".\""
-                              :garden (fn [{[bullet-char] :component-data}]
-                                        [:&
-                                         {:list-style "none"
-                                          :padding 0
-                                          :margin 0}
-                                         [:li
-                                          {:padding-left "1rem"
-                                           :text-indent "-0.7rem"}]
-                                         ["li::before"
-                                          {:content bullet-char}]])}]})
-
 (o/defstyled custok1 :div
   :bg-primary)
 
@@ -148,6 +127,28 @@
   :bullets-🐻)
 
 (deftest custom-tokens-test
+  (o/set-tokens! {:colors {:primary "001122"}
+                  :fonts {:system "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji"}
+                  :components [{:id :full-center
+                                :garden {:display "inline-flex"
+                                         :align-items "center"}}
+                               {:id :full-center-bis
+                                :garden [:& :inline-flex :items-center]}
+                               {:id :custom-bullets
+                                :rules "custom-bullets = <'bullets-'> bullet-char
+                                      <bullet-char> = #\".\""
+                                :garden (fn [{[bullet-char] :component-data}]
+                                          [:&
+                                           {:list-style "none"
+                                            :padding 0
+                                            :margin 0}
+                                           [:li
+                                            {:padding-left "1rem"
+                                             :text-indent "-0.7rem"}]
+                                           ["li::before"
+                                            {:content bullet-char}]])}]})
+
+
   (is (= ".ot__custok1{--gi-bg-opacity:1;background-color:rgba(0,17,34,var(--gi-bg-opacity))}"
          (o/css custok1)))
 
@@ -161,7 +162,9 @@
          (o/css custok4)))
 
   (is (= ".ot__custok5{list-style:none;padding:0;margin:0}.ot__custok5 li{padding-left:1rem;text-indent:-0.7rem}.ot__custok5 li::before{content:🐻}"
-         (o/css custok5))))
+         (o/css custok5)))
+
+  (o/set-tokens! {}))
 
 (deftest meta-merge-tokens-test
   ;; establish baseline
@@ -203,13 +206,24 @@
   (o/set-tokens! {}))
 
 (deftest defined-styles-test
-  (reset! o/registry {})
+  (let [reg @o/registry]
+    (reset! o/registry {})
 
-  (o/defstyled my-styles :div
-    {:color "red"})
+    ;; Deal with the fact that the registry is populated at compile time
+    (eval
+     `(o/defstyled ~'my-styles :div
+        {:color "red"}))
 
-  (o/defstyled more-styles :span
-    :rounded-xl)
+    (eval
+     `(o/defstyled ~'more-styles :span
+        :rounded-xl))
 
-  (is (= ".ot__my_styles{color:red}\n.ot__more_styles{border-radius:.75rem}"
-         (o/defined-styles))))
+    (is (= ".user__my_styles{color:red}\n.user__more_styles{border-radius:.75rem}"
+           (o/defined-styles)))
+
+    (reset! o/registry reg)))
+
+(o/defstyled tea :div
+  :bg-red-200
+  :md:text-green-900
+  {:color "MediumSeaGreen"})
