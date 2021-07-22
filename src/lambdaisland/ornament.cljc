@@ -226,7 +226,13 @@
          rule
 
          (simple-keyword? rule)
-         (second (class-name->garden (name rule)))
+         (let [girouette-garden (class-name->garden (name rule))]
+           (if (and (record? girouette-garden)
+                    (= (:identifier girouette-garden) :media))
+             (-> girouette-garden
+                 (update-in [:value :rules] (fn [rules]
+                                              (map #(into [:&] (rest %)) rules))))
+             (second girouette-garden)))
 
          (map? rule)
          (into {} (map (fn [[k v]] [k (process-property k v)])) rule)
