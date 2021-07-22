@@ -9,17 +9,23 @@
             [clojure.string :as str]
             [lambdaisland.hiccup.protocols :refer [HiccupTag -expand]]))
 
+(def block-level-tag?
+  #{:head :body :meta :title :script :svg :iframe :style
+    :link :address :article :aside :blockquote :details
+    :dialog :dd :div :dl :dt :fieldset :figure :figcaption :footer :form
+    :h1 :h2 :h3 :h4 :h5 :h6 :header :hgroup :hr :li :main :nav :ol :p :pre :section :table :ul})
+
 (defn- attr-map? [node-spec]
   (and (map? node-spec) (not (keyword? (:tag node-spec)))))
 
-(defn- nodify [node-spec]
+(defn- nodify [node-spec {:keys [newlines?] :as opts}]
   (cond
     (string? node-spec) node-spec
     (vector? node-spec)
     (let [[tag & [m & ms :as more]] node-spec]
       (cond
         (= :<> tag)
-        (enlive/flatmap nodify more)
+        (enlive/flatmap #(nodify % opts) more)
 
         (keyword? tag)
         (let [[tag-name & segments] (.split (name tag) "(?=[#.])")
@@ -29,7 +35,7 @@
                               (when (= \. (.charAt seg 0)) (subs seg 1)))
                             segments)
               node {:tag (keyword tag-name) :attrs (if (attr-map? m) m {})
-                    :content (enlive/flatmap nodify (if (attr-map? m) ms more))}
+                    :content (enlive/flatmap #(nodify % opts) (if (attr-map? m) ms more))}
               node (if id (assoc-in node [:attrs :id] id) node)
               node (if (seq classes)
                      (update-in node
@@ -44,28 +50,37 @@
                                              (str/replace #"^\s*\{|\}\s*$" "")
                                              str/trim)))
             (sequential? (get-in node [:attrs :class]))
-            (update-in [:attrs :class] #(str/join " " %))))
+            (update-in [:attrs :class] #(str/join " " %))
+            (and newlines? (block-level-tag? tag))
+            (->> (list "\n"))))
 
         (fn? tag)
-        (nodify (apply tag more))
+        (nodify (apply tag more) opts)
 
         (satisfies? HiccupTag tag)
         (nodify
          (-expand tag
                   (if (attr-map? m) m {})
-                  (if (attr-map? m) ms more)))
+                  (if (attr-map? m) ms more))
+         opts)
 
         :else
         (throw (ex-info "Not a valid hiccup tag" {:tag tag :form node-spec}))))
-    (sequential? node-spec) (enlive/flatmap nodify node-spec)
-    (map? node-spec) (update-in node-spec [:content] (comp nodify seq))
+    (sequential? node-spec) (enlive/flatmap #(nodify % opts) node-spec)
+    (map? node-spec) (update-in node-spec [:content] (comp #(nodify % opts) seq))
     :else (str node-spec)))
 
+;; TODO: this isn't super clean since we want :newlines? to be opt-in, but we
+;; don't have a way to pass options here because it's varargs. At the same time
+;; we mainly use this with a single arg, and also the name isn't great,
+;; something less generic would be nice... so this API call could stand some
+;; rethinking
+
 (defn html
-  "Like net.cgrand.enlive//html, but additionally support function components,
+  "Like net.cgrand.enlive/html, but additionally support function components,
   fragments with :<>, and extensible via the HiccupTag protocol."
   [& nodes-specs]
-  (enlive/flatmap nodify nodes-specs))
+  (enlive/flatmap #(nodify % {:newlines? true}) nodes-specs))
 
 ;;https://www.w3.org/TR/html5/syntax.html#void-elements
 (def html5-void-elements
@@ -83,5 +98,6 @@
   ([h]
    (render h nil))
   ([h {:keys [doctype?]
-       :or {doctype? true}}]
-   ((if doctype? render-html render-html*) (html h))))
+       :or {doctype? true}
+       :as opts}]
+   ((if doctype? render-html render-html*) (nodify h opts))))
