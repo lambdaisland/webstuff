@@ -7,25 +7,25 @@
   com.vladsch.flexmark/flexmark-ext-attributes {:mvn/version "0.62.2"}
 
   ;; Hiccup
-  enlive/enlive       {:mvn/version "1.1.6"}
+  enlive/enlive {:mvn/version "1.1.6"}
 
   ;; Ornament
-  garden/garden       {:mvn/version "1.3.10"}
-  girouette/girouette {:git/url   "https://github.com/green-coder/girouette.git"
-                       :sha       "ec53b6b016b143847a5aeebe426ac081a0fc5c11"
-                       :deps/root "lib/girouette"}
+  garden/garden         {:mvn/version "1.3.10"}
+  girouette/girouette   {:git/url   "https://github.com/green-coder/girouette.git"
+                         :sha       "ec53b6b016b143847a5aeebe426ac081a0fc5c11"
+                         :deps/root "lib/girouette"}
   meta-merge/meta-merge {:mvn/version "1.0.0"}
 
   ;; Thicc
   camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}
-  com.lambdaisland/dom-types {:mvn/version "0.0.19"}
+  com.lambdaisland/dom-types          {:mvn/version "0.0.19"}
 
   ;; HTTP
   ring/ring-codec         {:mvn/version "1.1.3"}
   ring/ring-defaults      {:mvn/version "0.3.3"}
   metosin/reitit          {:mvn/version "0.5.15"}
   ring/ring-jetty-adapter {:mvn/version "1.9.4"}
-  lambdaisland/glogi      {:mvn/version "1.0.128"}}
+  com.lambdaisland/glogi  {:mvn/version "1.0.128"}}
 
  :aliases
  {:dev
