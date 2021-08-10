@@ -21,6 +21,7 @@
             [reitit.http.interceptors.muuntaja :as muuntaja]
             [reitit.http.interceptors.parameters :as parameters]
             [reitit.interceptor.sieppari :as sieppari]
+            [reitit.middleware :as middleware]
             [reitit.ring :as ring]
             [ring.adapter.jetty :as jetty])
   (:import (java.io OutputStream)
@@ -110,6 +111,17 @@
                    vary-meta
                    assoc
                    :view-fn (comp hiccup/render (get-in ctx [:response :view])))
+
+        (and (nil? (get-in ctx [:response :body]))
+             (get-in ctx [:response :view]))
+        (assoc-in ctx [:response :body]
+                  ^{:view-fn (comp hiccup/render (get-in ctx [:response :view]))}
+                  {})
+
+        (get-in ctx [:response :html])
+        (assoc-in ctx [:response :body]
+                  ^{:view-fn (fn [_] (hiccup/render (get-in ctx [:response :html])))}
+                  {})
 
         :else
         (assoc ctx
@@ -210,18 +222,25 @@
   Takes a collection of reitit `:routes`, and optionally a `:muuntaja-instance`,
   a sequence of `:interceptors`, and a `:default-handler` which is used when no
   route matches. See [[muuntaja-instance]], [[default-interceptors]]
-  and [[ring-default-handler]] for the default values."
-  [{:keys [muuntaja-instance interceptors default-handler routes]
+  and [[ring-default-handler]] for the default values.
+
+  Can also optionally take a sequence of `:middleware`, which is handled through
+  `reitit.middleware`, so it accepts anything that implements `IntoMiddleware`."
+  [{:keys [muuntaja-instance interceptors default-handler routes middleware]
     :or {muuntaja-instance (muuntaja-instance)
          interceptors (default-interceptors)
          default-handler (ring-default-handler)}}]
-  (http/ring-handler
-   (http/router
-    routes
-    {:data {:muuntaja muuntaja-instance
-            :interceptors interceptors}})
-   default-handler
-   {:executor sieppari/executor}))
+  (let [wrap (if (seq middleware)
+               (partial middleware/chain middleware)
+               identity)
+        handler (http/ring-handler
+                 (http/router
+                  routes
+                  {:data {:muuntaja muuntaja-instance
+                          :interceptors interceptors}})
+                 default-handler
+                 {:executor sieppari/executor})]
+    (with-meta (wrap handler) (meta handler))))
 
 (defn start-jetty!
   "Start a Jetty instance and start listening for requests
