@@ -184,7 +184,6 @@
 (defn ring-default-handler
   "The default fallback handler
 
-  - Serve static resources on the classpath
   - Strip trailing slashes (will cause a redirect)
   - Handler 404/405/406 responses, see [[reitit.ring/create-default-handler]]
     for options
@@ -193,7 +192,6 @@
    (ring-default-handler nil))
   ([opts]
    (ring/routes
-    (ring/create-resource-handler {:path "/"})
     (ring/redirect-trailing-slash-handler {:method :strip})
     (ring/create-default-handler opts))))
 
@@ -252,13 +250,18 @@
   recommended for production use, since rebuilding the handler (and with it, the
   router) is expensive.
 
+  `:wrap-handler` can be used to wrap the handler in static middleware, this
+  does not get updated on each request.
+
   Returns the Jetty instance"
-  [{:keys [port rebuild-on-request? build-handler join?]
-    :or {join? false}}]
+  [{:keys [port rebuild-on-request? build-handler join? wrap-handler]
+    :or {join? false
+         wrap-handler identity}}]
   (log/info :server/starting {:port port :rebuild-on-request? rebuild-on-request?})
-  (jetty/run-jetty (if rebuild-on-request?
-                     #((build-handler) %)
-                     (build-handler))
+  (jetty/run-jetty (wrap-handler
+                    (if rebuild-on-request?
+                      #((build-handler) %)
+                      (build-handler)))
                    {:port port
                     :join? false}))
 
