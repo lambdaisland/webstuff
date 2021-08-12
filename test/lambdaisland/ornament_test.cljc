@@ -12,7 +12,6 @@
 (o/defstyled simple :span
   {:color "#ffffff"})
 
-
 (o/defstyled tokens :span
   :px-5 :py-3 :rounded-xl)
 
@@ -60,6 +59,20 @@
    {:grid-gap "1rem"
     :padding "0 2rem 2rem"}])
 
+(o/defstyled responsive-token :div
+  :bg-red-200
+  :md:text-green-900
+  {:color "MediumSeaGreen"})
+
+(o/defstyled inline-descendant :div
+  [:>.left :bg-blue-500])
+
+;; This behavior may change
+(o/defstyled props-via-metadata :a
+  ([props]
+   ^{:href (:href props)}
+   [:<> "my link"]))
+
 #?(:clj
    (deftest css-test
      (is (= ".ot__simple{color:#fff}"
@@ -87,7 +100,13 @@
             (o/css with-code)))
 
      (is (= ".ot__with_media{padding:0 1rem 1rem}@media(min-width:1rem){.ot__with_media{grid-gap:1rem;padding:0 2rem 2rem}}"
-            (o/css with-media)))))
+            (o/css with-media)))
+
+     (is (= ".ot__responsive_token{--gi-bg-opacity:1;background-color:rgba(254,202,202,var(--gi-bg-opacity));color:MediumSeaGreen}@media(min-width:768px){.ot__responsive_token .md\\:text-green-900{--gi-text-opacity:1;color:rgba(20,83,45,var(--gi-text-opacity))}}"
+            (o/css responsive-token)))
+
+     (is (= ".ot__inline_descendant>.left{--gi-bg-opacity:1;background-color:rgba(59,130,246,var(--gi-bg-opacity))}"
+            (o/css inline-descendant)))))
 
 (deftest rendering-test
   (are [hiccup html] (= html (render hiccup))
@@ -109,7 +128,10 @@
     "<span class=\"ot__simple ot__time\"></span>"
 
     [simple {:class [time]}]
-    "<span class=\"ot__simple ot__time\"></span>"))
+    "<span class=\"ot__simple ot__time\"></span>"
+
+    [props-via-metadata {:href "/foo/123"}]
+    "<a href=\"/foo/123\" class=\"ot__props_via_metadata\">my link</a>"))
 
 (o/defstyled custok1 :div
   :bg-primary)
@@ -222,8 +244,3 @@
            (o/defined-styles)))
 
     (reset! o/registry reg)))
-
-(o/defstyled tea :div
-  :bg-red-200
-  :md:text-green-900
-  {:color "MediumSeaGreen"})

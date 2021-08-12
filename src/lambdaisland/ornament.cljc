@@ -1,7 +1,8 @@
 (ns lambdaisland.ornament
   "CSS-in-clj(s)"
   (:require [clojure.string :as str]
-            #?@(:clj [[garden.compiler :as gc]
+            #?@(:clj [[clojure.walk :as walk]
+                      [garden.compiler :as gc]
                       [garden.core :as garden]
                       [garden.color :as gcolor]
                       [garden.types :as gt]
@@ -221,27 +222,27 @@
      (defmethod process-property :padding [_ val] (join-vector-by " " val))
 
      (defn process-rule [rule]
-       (cond
-         (record? rule) ; Prevent some defrecords in garden.types to be fudged
-         rule
+       (let [rule
+             (cond
+               (record? rule) ; Prevent some defrecords in garden.types to be fudged
+               rule
 
-         (simple-keyword? rule)
-         (let [girouette-garden (class-name->garden (name rule))]
-           (if (and (record? girouette-garden)
-                    (= (:identifier girouette-garden) :media))
-             (-> girouette-garden
-                 (update-in [:value :rules] (fn [rules]
-                                              (map #(into [:&] (rest %)) rules))))
-             (second girouette-garden)))
+               (simple-keyword? rule)
+               (walk/postwalk-replace
+                {(str "." (name rule)) :&}
+                (class-name->garden (name rule)))
 
-         (map? rule)
-         (into {} (map (fn [[k v]] [k (process-property k v)])) rule)
+               (map? rule)
+               (into {} (map (fn [[k v]] [k (process-property k v)])) rule)
 
-         (vector? rule)
-         (process-tag rule)
+               (vector? rule)
+               (process-tag rule)
 
-         :else
-         rule))
+               :else
+               rule)]
+         (if (and (vector? rule) (= 2 (count rule)) (#{:& "&"} (first rule)))
+           (second rule)
+           rule)))
 
      (defn process-rules [rules]
        (seq (reduce (fn [acc rule]
