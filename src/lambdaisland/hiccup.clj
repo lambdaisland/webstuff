@@ -54,7 +54,7 @@
             (and newlines? (block-level-tag? tag))
             (->> (list "\n"))))
 
-        (fn? tag)
+        (or (fn? tag) (= :lambdaisland.ornament/styled (type tag)))
         (nodify (apply tag more) opts)
 
         (satisfies? HiccupTag tag)

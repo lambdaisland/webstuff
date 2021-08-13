@@ -144,7 +144,7 @@
                       (if (map? ?attr-map) children (cons ?attr-map children)))))
 
       (fn? (first hiccup))
-      (apply (first hiccup) (rest hiccup))
+      (dom (apply (first hiccup) (rest hiccup)))
 
       :else
       (let [[tag-ns tag attrs children] (split-el hiccup)
