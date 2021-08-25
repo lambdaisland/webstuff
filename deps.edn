@@ -4,6 +4,7 @@
  {org.clojure/clojure {:mvn/version "1.10.3"}
   integrant/integrant {:mvn/version "0.8.0"}
   integrant/repl {:mvn/version "0.3.2"}
+  io.pedestal/pedestal.log {:mvn/version "0.5.9"}
 
   com.vladsch.flexmark/flexmark                {:mvn/version "0.62.2"}
   com.vladsch.flexmark/flexmark-ext-attributes {:mvn/version "0.62.2"}
