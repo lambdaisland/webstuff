@@ -120,7 +120,7 @@
 
         (get-in ctx [:response :html])
         (assoc-in ctx [:response :body]
-                  ^{:view-fn (fn [_] (hiccup/render (get-in ctx [:response :html])))}
+                  ^{:view-fn (fn [_] (hiccup/render-html (get-in ctx [:response :html])))}
                   {})
 
         :else

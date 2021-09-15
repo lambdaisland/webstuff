@@ -77,7 +77,8 @@
 ;; rethinking
 
 (defn html
-  "Like net.cgrand.enlive/html, but additionally support function components,
+  "Convert hiccup to clojure.xml.
+  Like net.cgrand.enlive/html, but additionally support function components,
   fragments with :<>, and extensible via the HiccupTag protocol."
   [& nodes-specs]
   (enlive/flatmap #(nodify % {:newlines? true}) nodes-specs))
@@ -87,14 +88,20 @@
   #{:area :base :br :col :embed :hr :img :input :keygen :link :meta :param
     :source :track :wbr})
 
-(defn render-html* [h]
+(defn render-html*
+  "Render clojure.xml to string.
+  Emits void-tags for HTML5 void elements (no closing tag or self-closing)."
+  [h]
   (with-redefs [enlive/self-closing-tags html5-void-elements]
     (apply str (enlive/emit* h))))
 
-(defn render-html [h]
+(defn render-html
+  "Render clojure.xml to string, add DOCTYPE"
+  [h]
   (str "<!DOCTYPE html>\n" (render-html* h)))
 
 (defn render
+  "Render hiccup to string"
   ([h]
    (render h nil))
   ([h {:keys [doctype?]
