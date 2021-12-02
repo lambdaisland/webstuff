@@ -102,6 +102,10 @@
         (not= "text/html" (some-> ctx :request :muuntaja/response .-format))
         ctx
 
+        (and (nil? (get-in ctx [:response :body]))
+             (nil? (get-in ctx [:response :view])))
+        ctx
+
         (string? (get-in ctx [:response :body]))
         ctx
 

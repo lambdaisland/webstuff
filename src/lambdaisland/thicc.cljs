@@ -12,8 +12,7 @@
   (:require [goog.dom :as gdom]
             [clojure.string :as str]
             [camel-snake-kebab.core :as csk]
-            [lambdaisland.dom-types :as dom-types]
-            [lambdaisland.hiccup.protocols :refer [HiccupTag -expand]]))
+            [lambdaisland.dom-types :as dom-types]))
 
 (extend-type js/Node
   ITransientCollection
@@ -82,16 +81,29 @@
 (defn replace-el [old new]
   (replace-child (parent old) old new))
 
-(defn query [selector]
-  (js/document.querySelector selector))
+(defn query
+  "Find a matching DOM element as per `querySelector`, either on the full
+  document, or starting from the given element"
+  ([selector]
+   (js/document.querySelector selector))
+  ([el selector]
+   (.querySelector el selector)))
 
-(defn query-all [selector]
-  (js/document.querySelectorAll selector))
+(defn query-all
+  "Find all matching DOM elements as per `querySelector`, either on the full
+  document, or starting from the given element"
+  ([selector]
+   (js/document.querySelectorAll selector))
+  ([el selector]
+   (.querySelectorAll el selector)))
 
-(defn el-by-id [id]
+(defn el-by-id
+  "Find a DOM element in the document based on its `id` attribute"
+  [id]
   (js/document.getElementById id))
 
 (defn clone-node
+  "Call `.cloneNode` on the DOM element, does a deep clone by default."
   ([el]
    (clone-node el true))
   ([el deep?]
@@ -136,12 +148,6 @@
     (cond
       (= :<> (first hiccup))
       (dom (rest hiccup))
-
-      (implements? HiccupTag (first hiccup))
-      (let [[tag ?attr-map & children] hiccup]
-        (dom (-expand tag
-                      (if (map? ?attr-map) ?attr-map {})
-                      (if (map? ?attr-map) children (cons ?attr-map children)))))
 
       (fn? (first hiccup))
       (dom (apply (first hiccup) (rest hiccup)))
