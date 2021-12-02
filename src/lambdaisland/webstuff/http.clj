@@ -177,10 +177,11 @@
    :body
    ^{:view-fn
      (fn [{:keys [type class message]}]
-       [:div
-        [:h1 "500 Server Error"]
-        [:h2 class]
-        [:p message]])}
+       (hiccup/render
+        [:div
+         [:h1 "500 Server Error"]
+         [:h2 class]
+         [:p message]]))}
    {:type "exception"
     :class (.getName (.getClass error))
     :message (.getMessage error)}})
