@@ -1,27 +1,27 @@
 {:paths ["src" "resources"]
 
  :deps
- {org.clojure/clojure {:mvn/version "1.10.3"}
+ {org.clojure/clojure {:mvn/version "1.11.1"}
   integrant/integrant {:mvn/version "0.8.0"}
   integrant/repl {:mvn/version "0.3.2"}
-  io.pedestal/pedestal.log {:mvn/version "0.5.9"}
+  io.pedestal/pedestal.log {:mvn/version "0.5.10"}
   aero/aero {:mvn/version "1.1.6"}
 
-  com.vladsch.flexmark/flexmark                {:mvn/version "0.62.2"}
-  com.vladsch.flexmark/flexmark-ext-attributes {:mvn/version "0.62.2"}
+  com.vladsch.flexmark/flexmark                {:mvn/version "0.64.0"}
+  com.vladsch.flexmark/flexmark-ext-attributes {:mvn/version "0.64.0"}
 
   com.lambdaisland/hiccup {:mvn/version "0.0.4"}
 
   ;; Thicc
   camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}
-  com.lambdaisland/dom-types          {:mvn/version "0.4.34"}
+  com.lambdaisland/dom-types          {:mvn/version "0.5.37"}
 
   ;; HTTP
   ring/ring-codec         {:mvn/version "1.2.0"}
   ring/ring-defaults      {:mvn/version "0.3.3"}
-  metosin/reitit          {:mvn/version "0.5.15"}
-  ring/ring-jetty-adapter {:mvn/version "1.9.4"}
-  com.lambdaisland/glogi  {:mvn/version "1.0.136"}}
+  metosin/reitit          {:mvn/version "0.5.18"}
+  ring/ring-jetty-adapter {:mvn/version "1.9.5"}
+  com.lambdaisland/glogi  {:mvn/version "1.1.144"}}
 
  :aliases
  {:dev
@@ -30,4 +30,4 @@
 
   :test
   {:extra-paths ["test"]
-   :extra-deps  {lambdaisland/kaocha {:mvn/version "1.60.945"}}}}}
+   :extra-deps  {lambdaisland/kaocha {:mvn/version "1.66.1034"}}}}}

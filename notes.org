@@ -1,0 +1,23 @@
+Mechanisms
+
+- Source code sweep to find use tokens
+- View macro that scans for tokens
+- Use :class to include tokens
+- Use :style to include tokens
+- Compile inline tokens to `my_ns_line_123` class name
+- Use inline tokens directly in compiled CSS
+- Convert tokens to inline `:style` attributes
+
+Principles
+- Avoid doing Girouette compilation in the frontend, prefer compiling in the back
+- Keep girouette and garden out of the frontend build
+
+Backend
+- static
+-> should be a class included in CSS
+-> scan source?
+-> collapse classes?
+- dynamic/on-the-fly
+Frontend
+- static
+- dynamic/on-the-fly
