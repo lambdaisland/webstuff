@@ -45,8 +45,33 @@
 (defn fragment? [f]
   (= js/DocumentFragment (type f)))
 
+(def kebab-case-tags
+  ;; from https://github.com/preactjs/preact-compat/issues/222
+  #{;; html
+    "accept-charset" "http-equiv"
+    ;; svg
+    "accent-height" "alignment-baseline" "arabic-form" "baseline-shift" "cap-height"
+    "clip-path" "clip-rule" "color-interpolation" "color-interpolation-filters"
+    "color-profile" "color-rendering" "fill-opacity" "fill-rule" "flood-color"
+    "flood-opacity" "font-family" "font-size" "font-size-adjust" "font-stretch"
+    "font-style" "font-variant" "font-weight" "glyph-name"
+    "glyph-orientation-horizontal" "glyph-orientation-vertical" "horiz-adv-x"
+    "horiz-origin-x" "marker-end" "marker-mid" "marker-start" "overline-position"
+    "overline-thickness" "panose-1" "paint-order" "stop-color" "stop-opacity"
+    "strikethrough-position" "strikethrough-thickness" "stroke-dasharray"
+    "stroke-dashoffset" "stroke-linecap" "stroke-linejoin" "stroke-miterlimit"
+    "stroke-opacity" "stroke-width" "text-anchor" "text-decoration" "text-rendering"
+    "underline-position" "underline-thickness" "unicode-bidi" "unicode-range"
+    "units-per-em" "v-alphabetic" "v-hanging" "v-ideographic" "v-mathematical"
+    "vert-adv-y" "vert-origin-x" "vert-origin-y" "word-spacing" "writing-mode"
+    "x-height"})
+
 (defn set-attr [el k v]
-  (let [n (csk/->camelCase (name k))]
+  (let [n (name k)
+        n (if (or (kebab-case-tags n)
+                  (str/starts-with? n "data-"))
+            n
+            (csk/->camelCase n))]
     (cond
       (qualified-keyword? k)
       (.setAttributeNS el (get *namespaces* (namespace k)) n v)
